@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 1240">
+  <rect width="1240" height="1240" fill="#0a1930"/>
+
+  <text x="620" y="320" text-anchor="middle" font-family="Montserrat, 'Segoe UI', Arial, sans-serif" font-size="68" font-weight="700" letter-spacing="14" fill="#ffffff">EMBALAGENS</text>
+
+  <g stroke="#2f7de1" stroke-width="9" fill="none">
+    <path d="M 340 470 Q 620 350 900 470"/>
+    <path d="M 420 470 Q 620 390 820 470"/>
+    <path d="M 500 470 Q 620 425 740 470"/>
+  </g>
+
+  <text x="620" y="700" text-anchor="middle" font-family="Montserrat, 'Segoe UI', Arial, sans-serif" font-size="200" font-weight="800" letter-spacing="2" fill="#ffffff">HLN</text>
+
+  <g stroke="#2f7de1" stroke-width="9" fill="none">
+    <path d="M 340 770 Q 620 890 900 770"/>
+    <path d="M 420 770 Q 620 850 820 770"/>
+    <path d="M 500 770 Q 620 815 740 770"/>
+  </g>
+
+  <text x="620" y="940" text-anchor="middle" font-family="Montserrat, 'Segoe UI', Arial, sans-serif" font-size="58" font-weight="700" letter-spacing="8" fill="#ffffff">E EQUIPAMENTOS</text>
+</svg>

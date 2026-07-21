@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Custo — Portal HLN</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="admin-brand">HLN Portal</div>
+  <nav class="admin-nav">
+    <a href="pedido.html">Pedido</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="catalogo.html">Catálogo</a>
+    <a href="financeiro.html">Financeiro</a>
+    <a href="calculadora-custo.html" class="active">Calculadora de Custo</a>
+  </nav>
+  <div class="admin-user">
+    <span>Olá, <span data-user-name>—</span></span>
+    <a href="trocar-senha.html" style="color:#cfd9ea; font-size:0.85rem;">Trocar senha</a>
+    <button data-logout>Sair</button>
+  </div>
+</header>
+
+<main class="admin-main">
+  <h1 class="admin-title">Calculadora de Custo</h1>
+  <p style="color:var(--gray-400); margin-top:-16px; margin-bottom:20px; font-size:0.9rem;">
+    Use para analisar a concorrência: informe as medidas e o preço total que o concorrente está cobrando —
+    a calculadora mostra o Fator dele (R$/kg), do mesmo jeito que usamos no Pedido.
+  </p>
+
+  <div class="admin-card">
+    <h2>Medidas e preço do concorrente</h2>
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="cc-largura">Largura (m)</label>
+        <input type="text" inputmode="decimal" id="cc-largura" placeholder="Ex: 0,20">
+      </div>
+      <div class="form-field">
+        <label for="cc-comprimento">Comprimento (m)</label>
+        <input type="text" inputmode="decimal" id="cc-comprimento" placeholder="Ex: 0,22">
+      </div>
+      <div class="form-field">
+        <label for="cc-espessura">Espessura (µ)</label>
+        <input type="text" inputmode="decimal" id="cc-espessura" placeholder="Ex: 120">
+      </div>
+      <div class="form-field">
+        <label for="cc-quantidade">Quantidade</label>
+        <input type="text" inputmode="decimal" id="cc-quantidade" placeholder="Ex: 1000">
+      </div>
+      <div class="form-field">
+        <label for="cc-preco-concorrente">Preço do concorrente (R$ total)</label>
+        <input type="text" inputmode="decimal" id="cc-preco-concorrente" placeholder="Ex: 1.000,00">
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <h2>Resultado</h2>
+    <div class="totals-bar">
+      <div class="total-item">
+        <span class="total-label">Peso Unitário (kg)</span>
+        <span class="total-value" id="cc-peso-unitario">0</span>
+      </div>
+      <div class="total-item">
+        <span class="total-label">Peso Total (kg)</span>
+        <span class="total-value" id="cc-peso-total">0</span>
+      </div>
+      <div class="total-item">
+        <span class="total-label">Fator do Concorrente</span>
+        <span class="total-value" id="cc-preco-concorrente-peso">R$ 0,00</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/admin-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/calculadora-custo.js"></script>
+</body>
+</html>
