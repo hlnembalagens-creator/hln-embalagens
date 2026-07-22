@@ -31,12 +31,13 @@
 <main class="admin-main">
   <h1 class="admin-title">Calculadora de Custo</h1>
   <p style="color:var(--gray-400); margin-top:-16px; margin-bottom:20px; font-size:0.9rem;">
-    Use para analisar a concorrência: informe as medidas e o preço total que o concorrente está cobrando —
-    a calculadora mostra o Fator dele (R$/kg), do mesmo jeito que usamos no Pedido.
+    Calculadora de mão dupla: preencha as medidas e depois SÓ UM dos dois campos abaixo (Fator ou Preço Total) —
+    o outro é calculado automaticamente a partir do peso. Use para descobrir o Fator de um concorrente
+    (informando o preço dele) ou para simular seu próprio preço de venda a partir de um Fator.
   </p>
 
   <div class="admin-card">
-    <h2>Medidas e preço do concorrente</h2>
+    <h2>Medidas</h2>
     <div class="form-grid">
       <div class="form-field">
         <label for="cc-largura">Largura (m)</label>
@@ -54,16 +55,8 @@
         <label for="cc-quantidade">Quantidade</label>
         <input type="text" inputmode="decimal" id="cc-quantidade" placeholder="Ex: 1000">
       </div>
-      <div class="form-field">
-        <label for="cc-preco-concorrente">Preço do concorrente (R$ total)</label>
-        <input type="text" inputmode="decimal" id="cc-preco-concorrente" placeholder="Ex: 1.000,00">
-      </div>
     </div>
-  </div>
-
-  <div class="admin-card">
-    <h2>Resultado</h2>
-    <div class="totals-bar">
+    <div class="totals-bar" style="margin-top:20px;">
       <div class="total-item">
         <span class="total-label">Peso Unitário (kg)</span>
         <span class="total-value" id="cc-peso-unitario">0</span>
@@ -72,11 +65,22 @@
         <span class="total-label">Peso Total (kg)</span>
         <span class="total-value" id="cc-peso-total">0</span>
       </div>
-      <div class="total-item">
-        <span class="total-label">Fator do Concorrente</span>
-        <span class="total-value" id="cc-preco-concorrente-peso">R$ 0,00</span>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <h2>Fator × Preço Total</h2>
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="cc-fator">Fator</label>
+        <input type="text" inputmode="decimal" id="cc-fator" placeholder="Ex: 45,7">
+      </div>
+      <div class="form-field">
+        <label for="cc-preco-total">Preço Total (R$)</label>
+        <input type="text" inputmode="decimal" id="cc-preco-total" placeholder="Ex: 1.000,00">
       </div>
     </div>
+    <p class="hint" style="margin-top:8px;">Preencha um dos dois — o outro é calculado a partir do Peso Total.</p>
   </div>
 </main>
 
