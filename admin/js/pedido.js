@@ -29,6 +29,16 @@ function formatBRL(n) {
   return 'R$ ' + toNumber(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// Largura/Comprimento são digitados em CM na tela (é como todo mundo pensa e como
+// já sai impresso pro cliente), mas guardados em METROS internamente — mesma
+// unidade de sempre no banco e na fórmula de peso.
+function metrosParaCm(m) {
+  return Math.round(toNumber(m) * 100 * 1000) / 1000;
+}
+function cmParaMetros(cm) {
+  return toNumber(cm) / 100;
+}
+
 function calcVacuo(item) {
   var peso = item.largura_m * item.comprimento_m * item.espessura_micras;
   var pesoTotal = peso * item.quantidade;
@@ -121,8 +131,8 @@ function renderVacuoRow(item) {
 
   row.innerHTML =
     '<div class="form-field"><label class="item-row-label">Material</label><input type="text" data-f="material" placeholder="Ex: NYLON POLI" value="' + (item.material || '') + '"></div>' +
-    '<div class="form-field"><label class="item-row-label">Larg. (m)</label><input type="text" inputmode="decimal" data-f="largura_m" placeholder="Ex: 0,20" value="' + item.largura_m + '"></div>' +
-    '<div class="form-field"><label class="item-row-label">Comp. (m)</label><input type="text" inputmode="decimal" data-f="comprimento_m" placeholder="Ex: 0,22" value="' + item.comprimento_m + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Larg. (cm)</label><input type="text" inputmode="decimal" data-f="largura_m" placeholder="Ex: 20" value="' + metrosParaCm(item.largura_m) + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Comp. (cm)</label><input type="text" inputmode="decimal" data-f="comprimento_m" placeholder="Ex: 22" value="' + metrosParaCm(item.comprimento_m) + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Esp. (µ)</label><input type="text" inputmode="decimal" data-f="espessura_micras" placeholder="Ex: 120" value="' + item.espessura_micras + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Tipo</label><input type="text" data-f="tipo" placeholder="Ex: NATURAL" value="' + (item.tipo || '') + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Qtd.</label><input type="text" inputmode="decimal" data-f="quantidade" value="' + item.quantidade + '"></div>' +
@@ -131,11 +141,16 @@ function renderVacuoRow(item) {
     '<div class="form-field"><label class="item-row-label">Vl. Total</label><span class="calc-readout" data-out="vl_total">R$ 0,00</span></div>' +
     '<button type="button" class="item-remove" title="Remover item">✕</button>';
 
+  var VACUO_CAMPOS_CM = ['largura_m', 'comprimento_m'];
   var VACUO_CAMPOS_NUMERICOS = ['largura_m', 'comprimento_m', 'espessura_micras', 'quantidade', 'taxa_preco_peso'];
   row.querySelectorAll('[data-f]').forEach(function (input) {
     input.addEventListener('input', function () {
       var field = input.dataset.f;
-      item[field] = (VACUO_CAMPOS_NUMERICOS.indexOf(field) !== -1) ? toNumber(input.value) : input.value;
+      if (VACUO_CAMPOS_CM.indexOf(field) !== -1) {
+        item[field] = cmParaMetros(input.value);
+      } else {
+        item[field] = (VACUO_CAMPOS_NUMERICOS.indexOf(field) !== -1) ? toNumber(input.value) : input.value;
+      }
       updateVacuoRowReadout(row, item);
       updateTotals();
     });
