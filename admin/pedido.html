@@ -152,16 +152,16 @@
       </div>
       <div class="form-field">
         <label for="valor_total_a_pagar">Valor Total a Pagar (R$)</label>
-        <input type="number" id="valor_total_a_pagar" step="0.01">
+        <input type="text" inputmode="decimal" id="valor_total_a_pagar">
         <span class="hint">Preenchido automaticamente, editável.</span>
       </div>
       <div class="form-field" id="desconto-vista-field" style="display:none;">
         <label for="desconto_percentual">Desconto à Vista/Pix (%)</label>
-        <input type="number" id="desconto_percentual" step="0.01" min="0" max="100" placeholder="Ex: 5">
+        <input type="text" inputmode="decimal" id="desconto_percentual" placeholder="Ex: 5">
       </div>
       <div class="form-field" id="valor-vista-field" style="display:none;">
         <label for="valor_total_a_pagar_vista">Total a Pagar à Vista (R$)</label>
-        <input type="number" id="valor_total_a_pagar_vista" step="0.01">
+        <input type="text" inputmode="decimal" id="valor_total_a_pagar_vista">
         <span class="hint">Calculado a partir do desconto informado, editável.</span>
       </div>
     </div>
@@ -212,7 +212,7 @@
       </div>
       <div class="form-field">
         <label for="modal-preco">Preço Unitário (R$)</label>
-        <input type="number" id="modal-preco" step="0.01" min="0">
+        <input type="text" inputmode="decimal" id="modal-preco">
       </div>
       <div class="form-field">
         <label for="modal-quantidade">Quantidade</label>

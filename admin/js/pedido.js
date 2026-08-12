@@ -12,8 +12,16 @@ function uid() {
   return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
 
+// Aceita números no formato brasileiro (vírgula decimal, ponto de milhar) —
+// ex: "1.000,00" ou "0,20" — além do formato com ponto, e valores já numéricos.
 function toNumber(v) {
-  var n = parseFloat(v);
+  if (v == null) return 0;
+  var s = String(v).trim();
+  if (!s) return 0;
+  if (s.indexOf(',') !== -1) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  }
+  var n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
 
@@ -113,20 +121,21 @@ function renderVacuoRow(item) {
 
   row.innerHTML =
     '<div class="form-field"><label class="item-row-label">Material</label><input type="text" data-f="material" placeholder="Ex: NYLON POLI" value="' + (item.material || '') + '"></div>' +
-    '<div class="form-field"><label class="item-row-label">Larg. (m)</label><input type="number" step="0.001" data-f="largura_m" value="' + item.largura_m + '"></div>' +
-    '<div class="form-field"><label class="item-row-label">Comp. (m)</label><input type="number" step="0.001" data-f="comprimento_m" value="' + item.comprimento_m + '"></div>' +
-    '<div class="form-field"><label class="item-row-label">Esp. (µ)</label><input type="number" step="0.1" data-f="espessura_micras" value="' + item.espessura_micras + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Larg. (m)</label><input type="text" inputmode="decimal" data-f="largura_m" placeholder="Ex: 0,20" value="' + item.largura_m + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Comp. (m)</label><input type="text" inputmode="decimal" data-f="comprimento_m" placeholder="Ex: 0,22" value="' + item.comprimento_m + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Esp. (µ)</label><input type="text" inputmode="decimal" data-f="espessura_micras" placeholder="Ex: 120" value="' + item.espessura_micras + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Tipo</label><input type="text" data-f="tipo" placeholder="Ex: NATURAL" value="' + (item.tipo || '') + '"></div>' +
-    '<div class="form-field"><label class="item-row-label">Qtd.</label><input type="number" step="1" data-f="quantidade" value="' + item.quantidade + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Qtd.</label><input type="text" inputmode="decimal" data-f="quantidade" value="' + item.quantidade + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Peso</label><span class="calc-readout" data-out="peso">0</span></div>' +
-    '<div class="form-field"><label class="item-row-label">Fator</label><input type="number" step="0.01" data-f="taxa_preco_peso" value="' + item.taxa_preco_peso + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Fator</label><input type="text" inputmode="decimal" data-f="taxa_preco_peso" value="' + item.taxa_preco_peso + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Vl. Total</label><span class="calc-readout" data-out="vl_total">R$ 0,00</span></div>' +
     '<button type="button" class="item-remove" title="Remover item">✕</button>';
 
+  var VACUO_CAMPOS_NUMERICOS = ['largura_m', 'comprimento_m', 'espessura_micras', 'quantidade', 'taxa_preco_peso'];
   row.querySelectorAll('[data-f]').forEach(function (input) {
     input.addEventListener('input', function () {
       var field = input.dataset.f;
-      item[field] = (input.type === 'number') ? toNumber(input.value) : input.value;
+      item[field] = (VACUO_CAMPOS_NUMERICOS.indexOf(field) !== -1) ? toNumber(input.value) : input.value;
       updateVacuoRowReadout(row, item);
       updateTotals();
     });
