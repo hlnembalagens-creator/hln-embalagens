@@ -5,6 +5,30 @@ function onlyDigits(str) {
   return (str || '').replace(/\D/g, '');
 }
 
+function sleep(ms) {
+  return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
+
+// Redes móveis (4G/5G) às vezes falham numa tentativa isolada — tenta de novo
+// antes de desistir, com um limite de tempo por tentativa pra não travar.
+async function fetchComRetentativa(url, tentativas) {
+  var ultimoErro;
+  for (var i = 0; i < tentativas; i++) {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function () { controller.abort(); }, 8000);
+    try {
+      var response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      ultimoErro = err;
+      if (i < tentativas - 1) await sleep(700 * (i + 1));
+    }
+  }
+  throw ultimoErro;
+}
+
 async function fetchCnpj(cnpjInput) {
   var cnpj = onlyDigits(cnpjInput);
 
@@ -14,7 +38,7 @@ async function fetchCnpj(cnpjInput) {
 
   var response;
   try {
-    response = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + cnpj);
+    response = await fetchComRetentativa('https://brasilapi.com.br/api/cnpj/v1/' + cnpj, 3);
   } catch (networkError) {
     throw new Error('Não foi possível conectar à consulta de CNPJ. Verifique sua internet.');
   }
