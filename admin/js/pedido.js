@@ -241,6 +241,12 @@ document.getElementById('modal-btn-adicionar').addEventListener('click', async f
   var salvarCatalogo = document.getElementById('modal-salvar-catalogo').checked;
   var produtoCatalogoId = null;
 
+  if (quantidade <= 0) {
+    errorEl.textContent = 'Informe a quantidade.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
   if (!codigo || !ncm) {
     var faltando = [];
     if (!codigo) faltando.push('Código');

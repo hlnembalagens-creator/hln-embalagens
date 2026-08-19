@@ -72,7 +72,11 @@ function renderProdutosTable(list) {
       if (!confirm('Excluir este produto do catálogo?')) return;
       var { error } = await supabaseClient.from('produtos_catalogo').delete().eq('id', btn.dataset.delete);
       if (error) {
-        showToast('Erro ao excluir: ' + error.message, 'error');
+        if (error.code === '23503') {
+          showToast('Não foi possível excluir: esse produto ainda está vinculado a um pedido antigo.', 'error');
+        } else {
+          showToast('Erro ao excluir: ' + error.message, 'error');
+        }
         return;
       }
       showToast('Produto excluído.', 'ok');
