@@ -255,11 +255,25 @@ document.getElementById('modal-btn-adicionar').addEventListener('click', async f
   }
 
   if (salvarCatalogo) {
-    var { data, error } = await supabaseClient.from('produtos_catalogo').insert({
-      nome_produto: nome, codigo_produto: codigo || null, ncm: ncm || null,
-      preco_unitario: preco || null, created_by: currentUserId
-    }).select().single();
-    if (!error && data) produtoCatalogoId = data.id;
+    // Já existe um produto com esse nome? Atualiza o preço dele em vez de duplicar o cadastro.
+    var { data: existente } = await supabaseClient
+      .from('produtos_catalogo').select('id').ilike('nome_produto', nome).limit(1).maybeSingle();
+
+    if (existente) {
+      var { error: updateError } = await supabaseClient.from('produtos_catalogo').update({
+        codigo_produto: codigo || null, ncm: ncm || null, preco_unitario: preco || null
+      }).eq('id', existente.id);
+      if (!updateError) {
+        produtoCatalogoId = existente.id;
+        showToast('Já existia um produto com esse nome — preço atualizado no catálogo em vez de duplicar.', 'ok');
+      }
+    } else {
+      var { data, error } = await supabaseClient.from('produtos_catalogo').insert({
+        nome_produto: nome, codigo_produto: codigo || null, ncm: ncm || null,
+        preco_unitario: preco || null, created_by: currentUserId
+      }).select().single();
+      if (!error && data) produtoCatalogoId = data.id;
+    }
   }
 
   geraisItems.push({
