@@ -307,7 +307,7 @@ function openSelecionarModal() {
   document.getElementById('select-produto-existente').value = '';
   document.getElementById('select-produto-codigo-readout').textContent = '—';
   document.getElementById('select-produto-ncm-readout').textContent = '—';
-  document.getElementById('select-produto-preco-readout').textContent = '—';
+  document.getElementById('select-produto-preco').value = '';
   document.getElementById('select-produto-quantidade').value = '';
   document.getElementById('selecionar-error').style.display = 'none';
   document.getElementById('modal-selecionar').classList.add('open');
