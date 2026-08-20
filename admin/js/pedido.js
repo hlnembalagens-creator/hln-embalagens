@@ -327,7 +327,7 @@ document.getElementById('select-produto-existente').addEventListener('change', f
   var produto = catalogoCache.find(function (p) { return p.id === e.target.value; });
   document.getElementById('select-produto-codigo-readout').textContent = produto && produto.codigo_produto ? produto.codigo_produto : '—';
   document.getElementById('select-produto-ncm-readout').textContent = produto && produto.ncm ? produto.ncm : '—';
-  document.getElementById('select-produto-preco-readout').textContent = produto ? formatBRL(produto.preco_unitario || 0) : '—';
+  document.getElementById('select-produto-preco').value = produto ? (produto.preco_unitario || 0) : '';
 });
 
 document.getElementById('selecionar-btn-adicionar').addEventListener('click', function () {
@@ -349,10 +349,12 @@ document.getElementById('selecionar-btn-adicionar').addEventListener('click', fu
     return;
   }
 
+  var precoEditado = toNumber(document.getElementById('select-produto-preco').value);
+
   geraisItems.push({
     _id: uid(), produto_catalogo_id: produto.id, nome_produto: produto.nome_produto,
     codigo_produto: produto.codigo_produto, ncm: produto.ncm,
-    preco_unitario: produto.preco_unitario || 0, quantidade: quantidade
+    preco_unitario: precoEditado, quantidade: quantidade
   });
 
   renderGeraisItems();
