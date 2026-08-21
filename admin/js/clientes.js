@@ -253,6 +253,89 @@ document.getElementById('cliente-search').addEventListener('input', function (e)
   renderClientesTable(filtered);
 });
 
+/* ===================== EXPORTAR / IMPORTAR EXCEL ===================== */
+
+document.getElementById('btn-exportar-clientes').addEventListener('click', function () {
+  var linhas = allClientes.map(function (c) {
+    var linha = {};
+    fieldIds.forEach(function (id) { linha[id] = c[id] || ''; });
+    return linha;
+  });
+  baixarExcel('clientes.xlsx', linhas, fieldIds);
+});
+
+document.getElementById('btn-importar-clientes').addEventListener('click', function () {
+  document.getElementById('input-importar-clientes').click();
+});
+
+document.getElementById('input-importar-clientes').addEventListener('change', async function (e) {
+  var file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+
+  var statusEl = document.getElementById('importar-clientes-status');
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Lendo arquivo...';
+
+  var linhas;
+  try {
+    linhas = await lerArquivoExcel(file);
+  } catch (err) {
+    statusEl.textContent = 'Erro ao ler o arquivo: ' + err.message;
+    return;
+  }
+
+  var criados = 0, atualizados = 0, semRazaoSocial = 0, comErro = 0;
+  // Cópia local que também recebe os registros criados/atualizados durante este
+  // mesmo import, pra linhas repetidas no arquivo se reconhecerem entre si
+  // (allClientes só é recarregado no final, não a cada linha).
+  var clientesConhecidos = allClientes.slice();
+
+  for (var i = 0; i < linhas.length; i++) {
+    var linha = linhas[i];
+    var razaoSocial = campoExcel(linha, ['razao_social', 'Razão Social']);
+    if (!razaoSocial) { semRazaoSocial++; continue; }
+
+    var values = {};
+    fieldIds.forEach(function (id) {
+      values[id] = campoExcel(linha, [id]) || null;
+    });
+    values.razao_social = razaoSocial;
+
+    var cnpjLinha = normalizarCnpj(values.cnpj_cpf);
+    var existente = cnpjLinha
+      ? clientesConhecidos.find(function (c) { return normalizarCnpj(c.cnpj_cpf) === cnpjLinha; })
+      : null;
+
+    var resultado;
+    if (existente) {
+      resultado = await supabaseClient.from('clientes').update(values).eq('id', existente.id).select().single();
+    } else {
+      values.created_by = currentUserId;
+      resultado = await supabaseClient.from('clientes').insert(values).select().single();
+    }
+
+    if (resultado.error) { comErro++; continue; }
+    if (existente) {
+      atualizados++;
+      Object.assign(existente, resultado.data);
+    } else {
+      criados++;
+      clientesConhecidos.push(resultado.data);
+    }
+  }
+
+  var resumoPartes = [];
+  if (criados) resumoPartes.push(criados + ' criado(s)');
+  if (atualizados) resumoPartes.push(atualizados + ' atualizado(s) por CNPJ/CPF já existente');
+  if (semRazaoSocial) resumoPartes.push(semRazaoSocial + ' linha(s) ignorada(s) por falta de Razão Social');
+  if (comErro) resumoPartes.push(comErro + ' com erro');
+
+  statusEl.textContent = 'Importação concluída: ' + (resumoPartes.join(', ') || 'nenhuma linha processada') + '.';
+  showToast('Importação de clientes concluída.', comErro ? 'warning' : 'ok');
+  await loadClientes();
+});
+
 document.getElementById('btn-buscar-cnpj').addEventListener('click', async function () {
   var cnpjInput = document.getElementById('cnpj_cpf');
   var statusEl = document.getElementById('cnpj-status');

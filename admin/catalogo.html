@@ -56,7 +56,7 @@
         </div>
         <div class="form-field">
           <label for="preco_unitario">Preço Unitário (R$)</label>
-          <input type="number" id="preco_unitario" step="0.01" min="0">
+          <input type="text" inputmode="decimal" id="preco_unitario">
         </div>
       </div>
       <p id="produto-error" class="error-message" style="display:none;"></p>
@@ -69,6 +69,12 @@
 
   <div class="admin-card">
     <h2>Produtos cadastrados</h2>
+    <div class="form-actions no-print" style="margin-bottom:14px;">
+      <button type="button" class="btn btn-outline" id="btn-exportar-produtos">Exportar Excel</button>
+      <button type="button" class="btn btn-outline" id="btn-importar-produtos">Importar Excel</button>
+      <input type="file" id="input-importar-produtos" accept=".xlsx,.xls,.csv" style="display:none;">
+    </div>
+    <p id="importar-produtos-status" style="display:none; margin-bottom:14px; font-size:0.85rem;"></p>
     <input type="text" id="produto-search" class="table-search" placeholder="Buscar por nome, código...">
     <div class="table-scroll">
       <table class="admin-table">
@@ -92,10 +98,12 @@
 <div id="toast-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/admin-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
+<script src="js/excel-utils.js"></script>
 <script src="js/catalogo.js"></script>
 </body>
 </html>

@@ -1,6 +1,18 @@
 var currentUserId = null;
 var allProdutos = [];
 
+// Aceita números no formato brasileiro (vírgula decimal, ponto de milhar).
+function toNumber(v) {
+  if (v == null) return 0;
+  var s = String(v).trim();
+  if (!s) return 0;
+  if (s.indexOf(',') !== -1) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  }
+  var n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
 function resetProdutoForm() {
   document.getElementById('produto-form').reset();
   document.getElementById('produto-id').value = '';
@@ -85,6 +97,96 @@ function renderProdutosTable(list) {
   });
 }
 
+/* ===================== EXPORTAR / IMPORTAR EXCEL ===================== */
+
+var PRODUTO_COLUNAS_EXCEL = ['nome_produto', 'codigo_produto', 'ncm', 'preco_unitario'];
+
+document.getElementById('btn-exportar-produtos').addEventListener('click', function () {
+  var linhas = allProdutos.map(function (p) {
+    return {
+      nome_produto: p.nome_produto || '',
+      codigo_produto: p.codigo_produto || '',
+      ncm: p.ncm || '',
+      preco_unitario: p.preco_unitario != null ? p.preco_unitario : ''
+    };
+  });
+  baixarExcel('catalogo.xlsx', linhas, PRODUTO_COLUNAS_EXCEL);
+});
+
+document.getElementById('btn-importar-produtos').addEventListener('click', function () {
+  document.getElementById('input-importar-produtos').click();
+});
+
+document.getElementById('input-importar-produtos').addEventListener('change', async function (e) {
+  var file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+
+  var statusEl = document.getElementById('importar-produtos-status');
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Lendo arquivo...';
+
+  var linhas;
+  try {
+    linhas = await lerArquivoExcel(file);
+  } catch (err) {
+    statusEl.textContent = 'Erro ao ler o arquivo: ' + err.message;
+    return;
+  }
+
+  var criados = 0, atualizados = 0, semNome = 0, comErro = 0;
+  // Cópia local que também recebe os registros criados/atualizados durante este
+  // mesmo import, pra linhas repetidas no arquivo se reconhecerem entre si
+  // (allProdutos só é recarregado no final, não a cada linha).
+  var produtosConhecidos = allProdutos.slice();
+
+  for (var i = 0; i < linhas.length; i++) {
+    var linha = linhas[i];
+    var nome = campoExcel(linha, ['nome_produto', 'Nome do Produto', 'Nome']);
+    if (!nome) { semNome++; continue; }
+
+    var codigo = campoExcel(linha, ['codigo_produto', 'Código do Produto', 'Código']);
+    var ncm = campoExcel(linha, ['ncm', 'NCM']);
+    var precoTexto = campoExcel(linha, ['preco_unitario', 'Preço Unitário', 'Preço']);
+    var preco = precoTexto ? toNumber(precoTexto) : null;
+
+    var existente = produtosConhecidos.find(function (p) {
+      return (p.nome_produto || '').trim().toLowerCase() === nome.toLowerCase();
+    });
+
+    var values = {
+      nome_produto: nome, codigo_produto: codigo || null, ncm: ncm || null, preco_unitario: preco
+    };
+
+    var resultado;
+    if (existente) {
+      resultado = await supabaseClient.from('produtos_catalogo').update(values).eq('id', existente.id).select().single();
+    } else {
+      values.created_by = currentUserId;
+      resultado = await supabaseClient.from('produtos_catalogo').insert(values).select().single();
+    }
+
+    if (resultado.error) { comErro++; continue; }
+    if (existente) {
+      atualizados++;
+      Object.assign(existente, resultado.data);
+    } else {
+      criados++;
+      produtosConhecidos.push(resultado.data);
+    }
+  }
+
+  var resumoPartes = [];
+  if (criados) resumoPartes.push(criados + ' criado(s)');
+  if (atualizados) resumoPartes.push(atualizados + ' atualizado(s) por nome já existente');
+  if (semNome) resumoPartes.push(semNome + ' linha(s) ignorada(s) por falta de nome');
+  if (comErro) resumoPartes.push(comErro + ' com erro');
+
+  statusEl.textContent = 'Importação concluída: ' + (resumoPartes.join(', ') || 'nenhuma linha processada') + '.';
+  showToast('Importação de produtos concluída.', comErro ? 'warning' : 'ok');
+  await loadProdutos();
+});
+
 document.getElementById('produto-search').addEventListener('input', function (e) {
   var term = e.target.value.toLowerCase();
   var filtered = allProdutos.filter(function (p) {
@@ -121,7 +223,7 @@ document.getElementById('produto-form').addEventListener('submit', async functio
     nome_produto: nome,
     codigo_produto: codigo || null,
     ncm: ncm || null,
-    preco_unitario: document.getElementById('preco_unitario').value || null
+    preco_unitario: document.getElementById('preco_unitario').value ? toNumber(document.getElementById('preco_unitario').value) : null
   };
 
   var produtoId = document.getElementById('produto-id').value;
