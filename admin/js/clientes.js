@@ -20,11 +20,13 @@ function setFormValues(cliente) {
   fieldIds.forEach(function (id) {
     document.getElementById(id).value = cliente && cliente[id] != null ? cliente[id] : '';
   });
+  document.getElementById('eh_fornecedor').checked = !!(cliente && cliente.eh_fornecedor);
 }
 
 function resetForm() {
   document.getElementById('cliente-form').reset();
   document.getElementById('cliente-id').value = '';
+  document.getElementById('eh_fornecedor').checked = false;
   document.getElementById('form-title').textContent = 'Novo cliente';
   document.getElementById('cliente-error').style.display = 'none';
   document.getElementById('cnpj-status').textContent = '';
@@ -84,8 +86,9 @@ function renderClientesTable(list) {
     var badgePendente = pendentes ? ' <span class="badge badge-warning">' + pendentes + ' orçamento' + (pendentes > 1 ? 's' : '') + ' pendente' + (pendentes > 1 ? 's' : '') + '</span>' : '';
     var cnpjNormalizado = normalizarCnpj(c.cnpj_cpf);
     var badgeDuplicado = (cnpjNormalizado && cnpjDuplicadoMap[cnpjNormalizado] > 1) ? ' <span class="badge badge-warning">CNPJ/CPF duplicado</span>' : '';
+    var badgeFornecedor = c.eh_fornecedor ? ' <span class="badge badge-ok">Fornecedor</span>' : '';
     return '<tr>' +
-      '<td>' + (c.razao_social || '') + badgePendente + badgeDuplicado + '</td>' +
+      '<td>' + (c.razao_social || '') + badgePendente + badgeDuplicado + badgeFornecedor + '</td>' +
       '<td>' + (c.nome_fantasia || '—') + '</td>' +
       '<td>' + (c.cnpj_cpf || '—') + '</td>' +
       '<td>' + contato + '</td>' +
@@ -381,6 +384,7 @@ document.getElementById('cliente-form').addEventListener('submit', async functio
   }
 
   var values = getFormValues();
+  values.eh_fornecedor = document.getElementById('eh_fornecedor').checked;
   var clienteId = document.getElementById('cliente-id').value;
 
   var cnpjDigitado = normalizarCnpj(values.cnpj_cpf);

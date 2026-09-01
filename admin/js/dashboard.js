@@ -27,7 +27,7 @@ function semaforoClasse(dias) {
 async function carregarClientesRanking() {
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('cliente_id, valor_total_a_pagar, created_at, clientes(razao_social, nome_fantasia, municipio, uf)')
+    .select('cliente_id, valor_total_a_pagar, created_at, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor)')
     .eq('tipo', 'pedido')
     .order('created_at', { ascending: false });
 
@@ -42,7 +42,9 @@ async function carregarClientesRanking() {
     return;
   }
 
-  var pedidos = (data || []).filter(function (p) { return p.cliente_id && p.clientes; });
+  // Cadastros marcados como fornecedor (ex: Altisvac) são pedidos feitos por nós a
+  // eles, não vendas — não entram nos rankings.
+  var pedidos = (data || []).filter(function (p) { return p.cliente_id && p.clientes && !p.clientes.eh_fornecedor; });
 
   if (!pedidos.length) {
     topEl.innerHTML = '<p class="dashboard-empty">Nenhum pedido confirmado ainda.</p>';
@@ -130,8 +132,8 @@ async function carregarProdutosRanking() {
   var topEl = document.getElementById('top-produtos');
 
   var [geraisRes, vacuoRes] = await Promise.all([
-    supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, pedidos!inner(tipo)').eq('pedidos.tipo', 'pedido'),
-    supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, largura_m, comprimento_m, espessura_micras, pedidos!inner(tipo)').eq('pedidos.tipo', 'pedido')
+    supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, pedidos!inner(tipo, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido'),
+    supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, largura_m, comprimento_m, espessura_micras, pedidos!inner(tipo, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido')
   ]);
 
   if (geraisRes.error && vacuoRes.error) {
@@ -139,12 +141,16 @@ async function carregarProdutosRanking() {
     return;
   }
 
+  // Filtra fora itens de pedidos feitos a cadastros marcados como fornecedor
+  // (ex: Altisvac) — são compras nossas, não vendas.
+  function naoEhFornecedor(i) { return !(i.pedidos && i.pedidos.clientes && i.pedidos.clientes.eh_fornecedor); }
+
   var porProduto = {};
-  (geraisRes.data || []).forEach(function (i) {
+  (geraisRes.data || []).filter(naoEhFornecedor).forEach(function (i) {
     var nome = i.nome_produto || 'Produto sem nome';
     porProduto[nome] = (porProduto[nome] || 0) + (parseFloat(i.quantidade) || 0);
   });
-  (vacuoRes.data || []).forEach(function (i) {
+  (vacuoRes.data || []).filter(naoEhFornecedor).forEach(function (i) {
     var medidas = formatCmDash(i.largura_m) + 'X' + formatCmDash(i.comprimento_m) + 'X' + Math.round(parseFloat(i.espessura_micras) || 0);
     // Medidas logo no início do nome — é o que mais importa pra saber qual modelo vendeu,
     // então tem que aparecer mesmo se o card cortar o texto com "...".
