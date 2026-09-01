@@ -768,6 +768,69 @@ document.getElementById('orcamento-preview-confirmar').addEventListener('click',
   atualizarAlertaOrcamentosPendentes();
 });
 
+document.getElementById('orcamento-preview-enviar-email').addEventListener('click', async function () {
+  var btn = this;
+  var errorEl = document.getElementById('orcamento-preview-error');
+  var estavaEditando = !!pedidoEmEdicaoId;
+  errorEl.style.display = 'none';
+
+  var emailDestino = (selectedCliente.contato_email || selectedCliente.email_empresa || '').trim();
+  if (!emailDestino) {
+    errorEl.textContent = 'Este cliente não tem e-mail cadastrado (nem do contato, nem da empresa). Cadastre um e-mail antes de enviar.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  var result = await salvarPedidoNoBanco('orcamento', 'pendente');
+
+  if (result.error) {
+    btn.disabled = false;
+    btn.textContent = 'Confirmar e Enviar por E-mail';
+    errorEl.textContent = 'Erro ao salvar orçamento: ' + result.error.message;
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.textContent = 'Enviando e-mail...';
+
+  var nomeCliente = selectedCliente.razao_social || selectedCliente.nome_fantasia || 'Cliente';
+  var { data: { session } } = await supabaseClient.auth.getSession();
+
+  var resp;
+  try {
+    resp = await fetch('/api/enviar-orcamento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accessToken: session ? session.access_token : null,
+        to: emailDestino,
+        subject: 'Orçamento nº ' + result.pedido.numero + ' — HLN Embalagens e Equipamentos',
+        html: buildOrcamentoHtml()
+      })
+    });
+  } catch (err) {
+    resp = null;
+  }
+
+  var respData = resp ? await resp.json().catch(function () { return {}; }) : {};
+
+  btn.disabled = false;
+  btn.textContent = 'Confirmar e Enviar por E-mail';
+
+  if (!resp || !resp.ok) {
+    errorEl.textContent = 'Orçamento salvo, mas houve erro ao enviar o e-mail: ' + (respData.error || 'falha de conexão.');
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  document.getElementById('modal-orcamento-preview').classList.remove('open');
+  showToast((estavaEditando ? 'Orçamento nº ' + result.pedido.numero + ' atualizado e enviado' : 'Orçamento nº ' + result.pedido.numero + ' salvo e enviado') + ' por e-mail para ' + emailDestino + '.', 'ok');
+  atualizarAlertaOrcamentosPendentes();
+});
+
 window.addEventListener('afterprint', function () {
   document.title = originalDocumentTitle;
 });
