@@ -29,6 +29,75 @@ function formatarFormaPagamentoHistorico(pedido) {
   return texto;
 }
 
+/* ===================== FINANCEIRO AUTOMÁTICO ===================== */
+// Toda vez que um pedido (não orçamento) é salvo, refaz as entradas do financeiro
+// ligadas a ele — assim elas sempre refletem o valor/forma de pagamento atuais.
+// currentUserId vem do escopo global da página (declarado em pedido.js/clientes.js).
+
+function addDiasFinanceiro(data, dias) {
+  var d = new Date(data);
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+async function sincronizarFinanceiroDoPedido(pedido, clienteNome) {
+  if (!pedido || pedido.tipo !== 'pedido') return;
+
+  await supabaseClient.from('financeiro_entradas').delete().eq('pedido_id', pedido.id);
+
+  var hoje = new Date();
+  var valorBase = (pedido.forma_pagamento === 'a_vista' || pedido.forma_pagamento === 'pix') && pedido.valor_total_a_pagar_vista
+    ? pedido.valor_total_a_pagar_vista
+    : pedido.valor_total_a_pagar;
+  valorBase = parseFloat(valorBase) || 0;
+
+  var produtoLabel = 'Pedido nº ' + pedido.numero;
+  var linhas = [];
+
+  if (pedido.forma_pagamento === 'boleto') {
+    var qtd = parseInt(pedido.boleto_quantidade, 10) || 1;
+    var dias = parseInt(pedido.boleto_dias, 10) || 30;
+    var valorParcela = valorBase / qtd;
+    for (var i = 0; i < qtd; i++) {
+      linhas.push({
+        data: addDiasFinanceiro(hoje, dias * (i + 1)),
+        cliente_nome: clienteNome || null,
+        produto: produtoLabel + ' — boleto ' + (i + 1) + '/' + qtd,
+        valor: valorParcela,
+        observacao: 'Gerado automaticamente a partir do pedido.',
+        pedido_id: pedido.id,
+        created_by: currentUserId
+      });
+    }
+  } else if (pedido.forma_pagamento === 'cartao_credito') {
+    var parcelas = parseInt(pedido.cartao_parcelas, 10) || 1;
+    var valorParcelaCartao = valorBase / parcelas;
+    for (var j = 0; j < parcelas; j++) {
+      linhas.push({
+        data: addDiasFinanceiro(hoje, 30 * j),
+        cliente_nome: clienteNome || null,
+        produto: produtoLabel + ' — parcela ' + (j + 1) + '/' + parcelas,
+        valor: valorParcelaCartao,
+        observacao: 'Gerado automaticamente a partir do pedido.',
+        pedido_id: pedido.id,
+        created_by: currentUserId
+      });
+    }
+  } else {
+    linhas.push({
+      data: hoje.toISOString().slice(0, 10),
+      cliente_nome: clienteNome || null,
+      produto: produtoLabel,
+      valor: valorBase,
+      observacao: 'Gerado automaticamente a partir do pedido.',
+      pedido_id: pedido.id,
+      created_by: currentUserId
+    });
+  }
+
+  if (linhas.length) await supabaseClient.from('financeiro_entradas').insert(linhas);
+}
+
 async function contarOrcamentosPendentes(clienteId) {
   var { count, error } = await supabaseClient
     .from('pedidos')
@@ -46,7 +115,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
 
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('*, pedido_itens_vacuo(*), pedido_itens_gerais(*)')
+    .select('*, clientes(razao_social, nome_fantasia), pedido_itens_vacuo(*), pedido_itens_gerais(*)')
     .eq('cliente_id', clienteId)
     .order('created_at', { ascending: false });
 
@@ -121,6 +190,15 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
         .update({ tipo: 'pedido', status_orcamento: 'convertido' })
         .eq('id', btn.dataset.converter);
       if (error) { alert('Erro ao converter: ' + error.message); return; }
+
+      var pedidoOriginal = data.find(function (p) { return p.id === btn.dataset.converter; });
+      if (pedidoOriginal) {
+        var pedidoConvertido = Object.assign({}, pedidoOriginal, { tipo: 'pedido', status_orcamento: 'convertido' });
+        var clienteInfo = pedidoOriginal.clientes;
+        var nomeCliente = clienteInfo ? clienteInfo.razao_social + (clienteInfo.nome_fantasia ? ' (' + clienteInfo.nome_fantasia + ')' : '') : null;
+        await sincronizarFinanceiroDoPedido(pedidoConvertido, nomeCliente);
+      }
+
       loadHistoricoCliente(clienteId, containerId, onAtualizado);
       if (typeof onAtualizado === 'function') onAtualizado();
     });
