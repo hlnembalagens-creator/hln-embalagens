@@ -24,10 +24,10 @@ function semaforoClasse(dias) {
 
 /* ===================== TOP CLIENTES + SEMÁFORO ===================== */
 
-async function carregarClientesRanking() {
+async function carregarClientesRanking(vendedorId) {
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('cliente_id, valor_total_a_pagar, created_at, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor)')
+    .select('cliente_id, vendedor_id, valor_total_a_pagar, created_at, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor)')
     .eq('tipo', 'pedido')
     .order('created_at', { ascending: false });
 
@@ -43,8 +43,12 @@ async function carregarClientesRanking() {
   }
 
   // Cadastros marcados como fornecedor (ex: Altisvac) são pedidos feitos por nós a
-  // eles, não vendas — não entram nos rankings.
-  var pedidos = (data || []).filter(function (p) { return p.cliente_id && p.clientes && !p.clientes.eh_fornecedor; });
+  // eles, não vendas — não entram nos rankings. Vendedor só enxerga as vendas dele.
+  var pedidos = (data || []).filter(function (p) {
+    if (!p.cliente_id || !p.clientes || p.clientes.eh_fornecedor) return false;
+    if (vendedorId && p.vendedor_id !== vendedorId) return false;
+    return true;
+  });
 
   if (!pedidos.length) {
     topEl.innerHTML = '<p class="dashboard-empty">Nenhum pedido confirmado ainda.</p>';
@@ -128,12 +132,12 @@ async function carregarClientesRanking() {
 
 /* ===================== PRODUTOS MAIS VENDIDOS ===================== */
 
-async function carregarProdutosRanking() {
+async function carregarProdutosRanking(vendedorId) {
   var topEl = document.getElementById('top-produtos');
 
   var [geraisRes, vacuoRes] = await Promise.all([
-    supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, pedidos!inner(tipo, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido'),
-    supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, largura_m, comprimento_m, espessura_micras, pedidos!inner(tipo, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido')
+    supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, pedidos!inner(tipo, vendedor_id, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido'),
+    supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, largura_m, comprimento_m, espessura_micras, pedidos!inner(tipo, vendedor_id, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido')
   ]);
 
   if (geraisRes.error && vacuoRes.error) {
@@ -142,8 +146,12 @@ async function carregarProdutosRanking() {
   }
 
   // Filtra fora itens de pedidos feitos a cadastros marcados como fornecedor
-  // (ex: Altisvac) — são compras nossas, não vendas.
-  function naoEhFornecedor(i) { return !(i.pedidos && i.pedidos.clientes && i.pedidos.clientes.eh_fornecedor); }
+  // (ex: Altisvac) — são compras nossas, não vendas. Vendedor só enxerga as vendas dele.
+  function naoEhFornecedor(i) {
+    if (!i.pedidos || (i.pedidos.clientes && i.pedidos.clientes.eh_fornecedor)) return false;
+    if (vendedorId && i.pedidos.vendedor_id !== vendedorId) return false;
+    return true;
+  }
 
   var porProduto = {};
   (geraisRes.data || []).filter(naoEhFornecedor).forEach(function (i) {
@@ -182,6 +190,16 @@ async function carregarProdutosRanking() {
 (async function () {
   var auth = await window.ADMIN_AUTH_READY;
   if (!auth) return;
-  carregarClientesRanking();
-  carregarProdutosRanking();
+
+  // Vendedor só enxerga os próprios números — admin vê tudo, de todo mundo.
+  var vendedorId = auth.profile.role === 'vendedor' ? auth.session.user.id : null;
+  if (vendedorId) {
+    var aviso = document.createElement('p');
+    aviso.style.cssText = 'margin-top:-16px; margin-bottom:20px; color:var(--gray-400); font-size:0.9rem;';
+    aviso.textContent = 'Mostrando apenas as suas vendas.';
+    document.querySelector('.admin-title').insertAdjacentElement('afterend', aviso);
+  }
+
+  carregarClientesRanking(vendedorId);
+  carregarProdutosRanking(vendedorId);
 })();

@@ -470,7 +470,10 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
     valor_total_a_pagar: toNumber(document.getElementById('valor_total_a_pagar').value),
     desconto_percentual: deveMostrarDescontoVista() ? (toNumber(document.getElementById('desconto_percentual').value) || null) : null,
     valor_total_a_pagar_vista: deveMostrarDescontoVista() ? toNumber(document.getElementById('valor_total_a_pagar_vista').value) : null,
-    created_by: currentUserId
+    created_by: currentUserId,
+    // Sempre reflete quem salvou por último — é essa pessoa que fica responsável
+    // pela venda (e pela comissão) na apuração do Financeiro.
+    vendedor_id: currentUserId
   };
 
   var pedido, pedidoError;

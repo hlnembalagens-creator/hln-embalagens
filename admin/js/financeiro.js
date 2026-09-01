@@ -219,6 +219,58 @@ async function gerarRelatorio() {
         return '<tr><td>' + formatDataFin(s.data) + '</td><td>' + s.descricao + '</td><td>' + (s.categoria || '—') + '</td><td>' + formatBRLFin(s.valor) + '</td></tr>';
       }).join('')
     : '<tr><td colspan="4">Nenhuma saída nesse período.</td></tr>';
+
+  gerarComissao(periodo);
+}
+
+/* ===================== COMISSÃO DE VENDEDORES ===================== */
+
+async function gerarComissao(periodo) {
+  var tbody = document.getElementById('comissao-tbody');
+
+  var { data, error } = await supabaseClient
+    .from('pedidos')
+    .select('vendedor_id, valor_total_a_pagar, profiles(nome_exibicao, comissao_percentual)')
+    .eq('tipo', 'pedido')
+    .gte('created_at', periodo.inicio)
+    .lt('created_at', periodo.fim);
+
+  if (error) {
+    tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar: ' + error.message + '</td></tr>';
+    return;
+  }
+
+  var porVendedor = {};
+  (data || []).forEach(function (p) {
+    if (!p.vendedor_id || !p.profiles) return;
+    if (!porVendedor[p.vendedor_id]) {
+      porVendedor[p.vendedor_id] = {
+        nome: p.profiles.nome_exibicao, percentual: parseFloat(p.profiles.comissao_percentual) || 0,
+        total: 0, qtd: 0
+      };
+    }
+    porVendedor[p.vendedor_id].total += parseFloat(p.valor_total_a_pagar) || 0;
+    porVendedor[p.vendedor_id].qtd += 1;
+  });
+
+  var lista = Object.keys(porVendedor).map(function (id) { return porVendedor[id]; })
+    .sort(function (a, b) { return b.total - a.total; });
+
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="5">Nenhuma venda nesse período.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = lista.map(function (v) {
+    var comissao = v.total * (v.percentual / 100);
+    return '<tr>' +
+      '<td>' + (v.nome || '—') + '</td>' +
+      '<td>' + v.qtd + '</td>' +
+      '<td>' + formatBRLFin(v.total) + '</td>' +
+      '<td>' + v.percentual.toLocaleString('pt-BR') + '%</td>' +
+      '<td><strong>' + formatBRLFin(comissao) + '</strong></td>' +
+    '</tr>';
+  }).join('');
 }
 
 document.getElementById('relatorio-tipo').addEventListener('change', function (e) {
