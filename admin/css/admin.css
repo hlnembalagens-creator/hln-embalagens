@@ -560,17 +560,17 @@ body.admin-body {
 /* Heat map de localidades (grade por UF, intensidade de cor = volume de compras) */
 .heatmap-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
   gap: 8px;
 }
 .heatmap-cell {
   border-radius: 8px;
-  padding: 10px 6px;
+  padding: 10px 8px;
   text-align: center;
   color: var(--white);
   font-family: var(--font-heading);
 }
-.heatmap-uf { display: block; font-weight: 800; font-size: 0.95rem; }
+.heatmap-uf { display: block; font-weight: 800; font-size: 0.85rem; overflow-wrap: break-word; }
 .heatmap-count { display: block; font-size: 0.72rem; opacity: 0.9; }
 
 .dashboard-empty { color: var(--gray-400); font-size: 0.88rem; }

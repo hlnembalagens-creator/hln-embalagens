@@ -7,6 +7,10 @@ function formatDataDash(iso) {
   return d.toLocaleDateString('pt-BR');
 }
 
+function formatCmDash(metros) {
+  return Math.round((parseFloat(metros) || 0) * 100);
+}
+
 function diasDesde(iso) {
   var ms = Date.now() - new Date(iso).getTime();
   return Math.floor(ms / (1000 * 60 * 60 * 24));
@@ -94,24 +98,26 @@ async function carregarClientesRanking() {
     '</tr>';
   }).join('');
 
-  // Mapa de calor por UF — conta pedidos por estado do cliente
-  var porUf = {};
+  // Mapa de calor por cidade — conta pedidos pelo município do cliente
+  var porCidade = {};
   pedidos.forEach(function (p) {
+    var cidade = (p.clientes.municipio || '').trim();
+    if (!cidade) return;
     var uf = (p.clientes.uf || '').toUpperCase().trim();
-    if (!uf) return;
-    porUf[uf] = (porUf[uf] || 0) + 1;
+    var chave = cidade + (uf ? '/' + uf : '');
+    porCidade[chave] = (porCidade[chave] || 0) + 1;
   });
 
-  var ufsOrdenadas = Object.keys(porUf).sort(function (a, b) { return porUf[b] - porUf[a]; });
-  if (!ufsOrdenadas.length) {
-    heatmapEl.innerHTML = '<p class="dashboard-empty">Nenhum cliente com UF cadastrada ainda.</p>';
+  var cidadesOrdenadas = Object.keys(porCidade).sort(function (a, b) { return porCidade[b] - porCidade[a]; });
+  if (!cidadesOrdenadas.length) {
+    heatmapEl.innerHTML = '<p class="dashboard-empty">Nenhum cliente com cidade cadastrada ainda.</p>';
   } else {
-    var maxCount = porUf[ufsOrdenadas[0]];
-    heatmapEl.innerHTML = ufsOrdenadas.map(function (uf) {
-      var count = porUf[uf];
+    var maxCount = porCidade[cidadesOrdenadas[0]];
+    heatmapEl.innerHTML = cidadesOrdenadas.map(function (cidade) {
+      var count = porCidade[cidade];
       var intensidade = 0.35 + 0.65 * (count / maxCount); // 0.35 a 1.0 de opacidade
       return '<div class="heatmap-cell" style="background: rgba(47, 125, 225, ' + intensidade.toFixed(2) + ');">' +
-        '<span class="heatmap-uf">' + uf + '</span>' +
+        '<span class="heatmap-uf">' + cidade + '</span>' +
         '<span class="heatmap-count">' + count + ' pedido(s)</span>' +
       '</div>';
     }).join('');
@@ -125,7 +131,7 @@ async function carregarProdutosRanking() {
 
   var [geraisRes, vacuoRes] = await Promise.all([
     supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, pedidos!inner(tipo)').eq('pedidos.tipo', 'pedido'),
-    supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, pedidos!inner(tipo)').eq('pedidos.tipo', 'pedido')
+    supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, largura_m, comprimento_m, espessura_micras, pedidos!inner(tipo)').eq('pedidos.tipo', 'pedido')
   ]);
 
   if (geraisRes.error && vacuoRes.error) {
@@ -139,7 +145,10 @@ async function carregarProdutosRanking() {
     porProduto[nome] = (porProduto[nome] || 0) + (parseFloat(i.quantidade) || 0);
   });
   (vacuoRes.data || []).forEach(function (i) {
-    var nome = 'Saco a Vácuo' + (i.material ? ' — ' + i.material : '') + (i.tipo ? ' / ' + i.tipo : '');
+    var medidas = formatCmDash(i.largura_m) + 'X' + formatCmDash(i.comprimento_m) + 'X' + Math.round(parseFloat(i.espessura_micras) || 0);
+    // Medidas logo no início do nome — é o que mais importa pra saber qual modelo vendeu,
+    // então tem que aparecer mesmo se o card cortar o texto com "...".
+    var nome = 'Saco a Vácuo ' + medidas + (i.material ? ' — ' + i.material : '') + (i.tipo ? ' / ' + i.tipo : '');
     porProduto[nome] = (porProduto[nome] || 0) + (parseFloat(i.quantidade) || 0);
   });
 
