@@ -40,10 +40,13 @@ function addDiasFinanceiro(data, dias) {
   return d.toISOString().slice(0, 10);
 }
 
-async function sincronizarFinanceiroDoPedido(pedido, clienteNome) {
+async function sincronizarFinanceiroDoPedido(pedido, clienteNome, ehFornecedor) {
   if (!pedido || pedido.tipo !== 'pedido') return;
 
+  // Limpa dos dois lados — se o cadastro virou/deixou de ser fornecedor entre
+  // uma edição e outra, o pedido pode ter migrado de entrada pra saída (ou vice-versa).
   await supabaseClient.from('financeiro_entradas').delete().eq('pedido_id', pedido.id);
+  await supabaseClient.from('financeiro_saidas').delete().eq('pedido_id', pedido.id);
 
   var hoje = new Date();
   var valorBase = (pedido.forma_pagamento === 'a_vista' || pedido.forma_pagamento === 'pix') && pedido.valor_total_a_pagar_vista
@@ -52,50 +55,52 @@ async function sincronizarFinanceiroDoPedido(pedido, clienteNome) {
   valorBase = parseFloat(valorBase) || 0;
 
   var produtoLabel = 'Pedido nº ' + pedido.numero;
-  var linhas = [];
+  var parcelas = []; // { data, valor, rotulo }
 
   if (pedido.forma_pagamento === 'boleto') {
     var qtd = parseInt(pedido.boleto_quantidade, 10) || 1;
     var dias = parseInt(pedido.boleto_dias, 10) || 30;
     var valorParcela = valorBase / qtd;
     for (var i = 0; i < qtd; i++) {
-      linhas.push({
-        data: addDiasFinanceiro(hoje, dias * (i + 1)),
-        cliente_nome: clienteNome || null,
-        produto: produtoLabel + ' — boleto ' + (i + 1) + '/' + qtd,
-        valor: valorParcela,
-        observacao: 'Gerado automaticamente a partir do pedido.',
-        pedido_id: pedido.id,
-        created_by: currentUserId
-      });
+      parcelas.push({ data: addDiasFinanceiro(hoje, dias * (i + 1)), valor: valorParcela, rotulo: produtoLabel + ' — boleto ' + (i + 1) + '/' + qtd });
     }
   } else if (pedido.forma_pagamento === 'cartao_credito') {
-    var parcelas = parseInt(pedido.cartao_parcelas, 10) || 1;
-    var valorParcelaCartao = valorBase / parcelas;
-    for (var j = 0; j < parcelas; j++) {
-      linhas.push({
-        data: addDiasFinanceiro(hoje, 30 * j),
+    var numParcelas = parseInt(pedido.cartao_parcelas, 10) || 1;
+    var valorParcelaCartao = valorBase / numParcelas;
+    for (var j = 0; j < numParcelas; j++) {
+      parcelas.push({ data: addDiasFinanceiro(hoje, 30 * j), valor: valorParcelaCartao, rotulo: produtoLabel + ' — parcela ' + (j + 1) + '/' + numParcelas });
+    }
+  } else {
+    parcelas.push({ data: hoje.toISOString().slice(0, 10), valor: valorBase, rotulo: produtoLabel });
+  }
+
+  if (ehFornecedor) {
+    var saidas = parcelas.map(function (p) {
+      return {
+        data: p.data,
+        descricao: (clienteNome ? clienteNome + ' — ' : '') + p.rotulo,
+        categoria: 'Fornecedor',
+        valor: p.valor,
+        observacao: 'Gerado automaticamente a partir do pedido (compra de fornecedor).',
+        pedido_id: pedido.id,
+        created_by: currentUserId
+      };
+    });
+    if (saidas.length) await supabaseClient.from('financeiro_saidas').insert(saidas);
+  } else {
+    var entradas = parcelas.map(function (p) {
+      return {
+        data: p.data,
         cliente_nome: clienteNome || null,
-        produto: produtoLabel + ' — parcela ' + (j + 1) + '/' + parcelas,
-        valor: valorParcelaCartao,
+        produto: p.rotulo,
+        valor: p.valor,
         observacao: 'Gerado automaticamente a partir do pedido.',
         pedido_id: pedido.id,
         created_by: currentUserId
-      });
-    }
-  } else {
-    linhas.push({
-      data: hoje.toISOString().slice(0, 10),
-      cliente_nome: clienteNome || null,
-      produto: produtoLabel,
-      valor: valorBase,
-      observacao: 'Gerado automaticamente a partir do pedido.',
-      pedido_id: pedido.id,
-      created_by: currentUserId
+      };
     });
+    if (entradas.length) await supabaseClient.from('financeiro_entradas').insert(entradas);
   }
-
-  if (linhas.length) await supabaseClient.from('financeiro_entradas').insert(linhas);
 }
 
 async function contarOrcamentosPendentes(clienteId) {
@@ -115,7 +120,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
 
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('*, clientes(razao_social, nome_fantasia), pedido_itens_vacuo(*), pedido_itens_gerais(*)')
+    .select('*, clientes(razao_social, nome_fantasia, eh_fornecedor), pedido_itens_vacuo(*), pedido_itens_gerais(*)')
     .eq('cliente_id', clienteId)
     .order('created_at', { ascending: false });
 
@@ -196,7 +201,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
         var pedidoConvertido = Object.assign({}, pedidoOriginal, { tipo: 'pedido', status_orcamento: 'convertido' });
         var clienteInfo = pedidoOriginal.clientes;
         var nomeCliente = clienteInfo ? clienteInfo.razao_social + (clienteInfo.nome_fantasia ? ' (' + clienteInfo.nome_fantasia + ')' : '') : null;
-        await sincronizarFinanceiroDoPedido(pedidoConvertido, nomeCliente);
+        await sincronizarFinanceiroDoPedido(pedidoConvertido, nomeCliente, !!(clienteInfo && clienteInfo.eh_fornecedor));
       }
 
       loadHistoricoCliente(clienteId, containerId, onAtualizado);

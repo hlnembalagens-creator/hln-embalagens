@@ -516,7 +516,7 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
   if (geraisRows.length) await supabaseClient.from('pedido_itens_gerais').insert(geraisRows);
 
   var nomeClienteFinanceiro = selectedCliente.razao_social + (selectedCliente.nome_fantasia ? ' (' + selectedCliente.nome_fantasia + ')' : '');
-  await sincronizarFinanceiroDoPedido(pedido, nomeClienteFinanceiro);
+  await sincronizarFinanceiroDoPedido(pedido, nomeClienteFinanceiro, !!selectedCliente.eh_fornecedor);
 
   pedidoEmEdicaoId = pedido.id;
   return { pedido: pedido };
