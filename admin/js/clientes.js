@@ -20,13 +20,13 @@ function setFormValues(cliente) {
   fieldIds.forEach(function (id) {
     document.getElementById(id).value = cliente && cliente[id] != null ? cliente[id] : '';
   });
-  document.getElementById('eh_fornecedor').checked = !!(cliente && cliente.eh_fornecedor);
+  document.getElementById('tipo_cadastro').value = (cliente && cliente.eh_fornecedor) ? 'fornecedor' : 'cliente';
 }
 
 function resetForm() {
   document.getElementById('cliente-form').reset();
   document.getElementById('cliente-id').value = '';
-  document.getElementById('eh_fornecedor').checked = false;
+  document.getElementById('tipo_cadastro').value = 'cliente';
   document.getElementById('form-title').textContent = 'Novo cliente';
   document.getElementById('cliente-error').style.display = 'none';
   document.getElementById('cnpj-status').textContent = '';
@@ -384,7 +384,7 @@ document.getElementById('cliente-form').addEventListener('submit', async functio
   }
 
   var values = getFormValues();
-  values.eh_fornecedor = document.getElementById('eh_fornecedor').checked;
+  values.eh_fornecedor = document.getElementById('tipo_cadastro').value === 'fornecedor';
   var clienteId = document.getElementById('cliente-id').value;
 
   var cnpjDigitado = normalizarCnpj(values.cnpj_cpf);

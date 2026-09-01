@@ -38,6 +38,16 @@
       <input type="hidden" id="cliente-id">
 
       <div class="form-grid" style="margin-bottom:20px;">
+        <div class="form-field span-full">
+          <label for="tipo_cadastro">Tipo de cadastro</label>
+          <select id="tipo_cadastro">
+            <option value="cliente">Cliente</option>
+            <option value="fornecedor">Fornecedor (ex: Altisvac) — só pra registrar compras/pedidos feitos a ele, não entra nos rankings do Dashboard</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:20px;">
         <div class="form-field">
           <label for="codigo">Código interno</label>
           <input type="text" id="codigo">
@@ -126,10 +136,6 @@
 
       <h2 style="margin-top:8px;">Particularidades do cliente</h2>
       <div class="form-grid" style="margin-bottom:8px;">
-        <div class="form-field span-full" style="flex-direction:row; align-items:center; gap:8px;">
-          <input type="checkbox" id="eh_fornecedor" style="width:auto;">
-          <label for="eh_fornecedor" style="margin:0;">Este cadastro é de um fornecedor (ex: Altisvac) — usado só pra registrar compras/pedidos feitos a ele, não deve entrar nos rankings do Dashboard</label>
-        </div>
         <div class="form-field">
           <label for="forma_pagamento_padrao">Forma de pagamento preferencial</label>
           <select id="forma_pagamento_padrao">
