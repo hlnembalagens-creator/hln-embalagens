@@ -32,11 +32,23 @@ window.ADMIN_AUTH_READY = (async function () {
     return new Promise(function () {});
   }
 
+  // Vendedor só enxerga Dashboard, Pedido e Clientes — as demais páginas são
+  // administrativas (catálogo, financeiro, calculadora de custo).
+  var PAGINAS_SOMENTE_ADMIN = ['catalogo', 'financeiro', 'calculadora-custo'];
+  if (profile.role === 'vendedor' && PAGINAS_SOMENTE_ADMIN.indexOf(CURRENT_PAGE) !== -1) {
+    location.replace('dashboard.html');
+    return new Promise(function () {});
+  }
+
   // Não usar DOMContentLoaded aqui: como este código já passou por vários
   // awaits, o DOM certamente já está pronto — e o evento pode já ter disparado
   // antes de chegarmos aqui, o que faria o listener nunca executar.
   var nameEls = document.querySelectorAll('[data-user-name]');
   nameEls.forEach(function (el) { el.textContent = profile.nome_exibicao; });
+
+  if (profile.role === 'vendedor') {
+    document.querySelectorAll('[data-role-admin]').forEach(function (el) { el.remove(); });
+  }
 
   var logoutBtns = document.querySelectorAll('[data-logout]');
   logoutBtns.forEach(function (btn) {

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Portal HLN</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="admin-brand">HLN Portal</div>
+  <nav class="admin-nav">
+    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="pedido.html">Pedido</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="catalogo.html" data-role-admin>Catálogo</a>
+    <a href="financeiro.html" data-role-admin>Financeiro</a>
+    <a href="calculadora-custo.html" data-role-admin>Calculadora de Custo</a>
+  </nav>
+  <div class="admin-user">
+    <span>Olá, <span data-user-name>—</span></span>
+    <a href="trocar-senha.html" style="color:#cfd9ea; font-size:0.85rem;">Trocar senha</a>
+    <button data-logout>Sair</button>
+  </div>
+</header>
+
+<main class="admin-main">
+  <h1 class="admin-title">Dashboard</h1>
+
+  <div class="dashboard-grid dashboard-grid-2" style="margin-bottom:20px;">
+    <div class="admin-card">
+      <div class="dashboard-card-title">Top 5 clientes</div>
+      <div class="dashboard-card-hint">Por valor total comprado (pedidos confirmados). O sinal ao lado mostra há quanto tempo veio a última compra.</div>
+      <div id="top-clientes" class="ranking-list"><p class="dashboard-empty">Carregando...</p></div>
+    </div>
+
+    <div class="admin-card">
+      <div class="dashboard-card-title">Produtos mais vendidos</div>
+      <div class="dashboard-card-hint">Por quantidade vendida (sem valores).</div>
+      <div id="top-produtos" class="ranking-list"><p class="dashboard-empty">Carregando...</p></div>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="dashboard-card-title">Mapa de calor — localidade dos clientes que mais compram</div>
+    <div class="dashboard-card-hint">Quanto mais forte a cor, maior o volume de compras vindo daquele estado.</div>
+    <div id="heatmap-uf" class="heatmap-grid"><p class="dashboard-empty">Carregando...</p></div>
+  </div>
+
+  <div class="admin-card">
+    <div class="dashboard-card-title">Recência de compra por cliente</div>
+    <div class="dashboard-card-hint">
+      <span class="semaforo-dot semaforo-verde"></span> comprou nos últimos 30 dias &nbsp;
+      <span class="semaforo-dot semaforo-amarelo"></span> entre 31 e 60 dias &nbsp;
+      <span class="semaforo-dot semaforo-vermelho"></span> mais de 60 dias sem comprar
+    </div>
+    <div class="table-scroll">
+      <table class="admin-table">
+        <thead>
+          <tr><th></th><th>Cliente</th><th>Localidade</th><th>Última compra</th><th>Há quantos dias</th></tr>
+        </thead>
+        <tbody id="semaforo-tbody">
+          <tr><td colspan="5">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/admin-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

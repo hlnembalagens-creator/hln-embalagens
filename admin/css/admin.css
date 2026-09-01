@@ -485,3 +485,92 @@ body.admin-body {
   border-bottom: 1px solid #ccc;
   padding-bottom: 3px;
 }
+
+/* ===== DASHBOARD ===== */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+.dashboard-grid.dashboard-grid-2 { grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); }
+
+.dashboard-card-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--navy-900);
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+.dashboard-card-hint {
+  font-size: 0.78rem;
+  color: var(--gray-400);
+  margin-bottom: 16px;
+}
+
+.ranking-list { display: flex; flex-direction: column; gap: 10px; }
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--off-white);
+}
+.ranking-pos {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  color: var(--blue-accent);
+  font-size: 1rem;
+  width: 22px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.ranking-info { flex: 1; min-width: 0; }
+.ranking-nome {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--navy-900);
+  font-size: 0.92rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ranking-sub { font-size: 0.78rem; color: var(--gray-400); }
+.ranking-valor {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--navy-900);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* Semáforo de recência de compra */
+.semaforo-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.semaforo-verde { background: #1fa855; }
+.semaforo-amarelo { background: #e0a800; }
+.semaforo-vermelho { background: #d63a3a; }
+
+/* Heat map de localidades (grade por UF, intensidade de cor = volume de compras) */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+}
+.heatmap-cell {
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-align: center;
+  color: var(--white);
+  font-family: var(--font-heading);
+}
+.heatmap-uf { display: block; font-weight: 800; font-size: 0.95rem; }
+.heatmap-count { display: block; font-size: 0.72rem; opacity: 0.9; }
+
+.dashboard-empty { color: var(--gray-400); font-size: 0.88rem; }
