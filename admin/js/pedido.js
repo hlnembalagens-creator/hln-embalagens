@@ -811,7 +811,11 @@ document.getElementById('orcamento-preview-enviar-email').addEventListener('clic
         accessToken: session ? session.access_token : null,
         to: emailDestino,
         subject: 'Orçamento nº ' + result.pedido.numero + ' — HLN Embalagens e Equipamentos',
-        html: buildOrcamentoHtml()
+        // Wrap com doctype/meta charset — o HTML de buildOrcamentoHtml() é injetado
+        // direto no DOM da própria página pra impressão (que já declara UTF-8), mas
+        // pro e-mail precisa ir um documento completo, senão o cliente de e-mail
+        // (Gmail etc.) adivinha o charset errado e os acentos viram "�".
+        html: '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' + buildOrcamentoHtml() + '</body></html>'
       })
     });
   } catch (err) {
