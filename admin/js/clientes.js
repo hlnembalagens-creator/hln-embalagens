@@ -20,6 +20,8 @@ function setFormValues(cliente) {
   fieldIds.forEach(function (id) {
     document.getElementById(id).value = cliente && cliente[id] != null ? cliente[id] : '';
   });
+  document.getElementById('telefone_empresa').value = formatarTelefone(document.getElementById('telefone_empresa').value);
+  document.getElementById('contato_telefone').value = formatarTelefone(document.getElementById('contato_telefone').value);
   document.getElementById('tipo_cadastro').value = (cliente && cliente.eh_fornecedor) ? 'fornecedor' : 'cliente';
 }
 
@@ -35,6 +37,35 @@ function resetForm() {
 function normalizarCnpj(v) {
   return (v || '').replace(/\D/g, '');
 }
+
+// Formata telefone conforme a quantidade de dígitos digitados:
+// (xx) xxxx-xxxx pra fixo (10 dígitos), (xx) xxxxx-xxxx pra celular (11 dígitos).
+function formatarTelefone(valor) {
+  var d = (valor || '').replace(/\D/g, '').slice(0, 11);
+  if (!d) return '';
+  if (d.length <= 2) return '(' + d;
+
+  var ddd = d.slice(0, 2);
+  var resto = d.slice(2);
+
+  if (d.length <= 10) {
+    var parte1 = resto.slice(0, 4);
+    var parte2 = resto.slice(4, 8);
+    return '(' + ddd + ') ' + parte1 + (parte2 ? '-' + parte2 : '');
+  }
+
+  var p1 = resto.slice(0, 5);
+  var p2 = resto.slice(5, 9);
+  return '(' + ddd + ') ' + p1 + (p2 ? '-' + p2 : '');
+}
+
+['telefone_empresa', 'contato_telefone'].forEach(function (id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', function () {
+    el.value = formatarTelefone(el.value);
+  });
+});
 
 var clientesComOrcamentoPendente = {};
 var cnpjDuplicadoMap = {};
