@@ -33,6 +33,67 @@
 <main class="admin-main">
   <h1 class="admin-title">Estoque</h1>
 
+  <div class="admin-card" id="card-importar" data-role-admin>
+    <h2>Importar NF / Romaneio</h2>
+    <p style="color:var(--gray-400); margin-top:-10px; margin-bottom:16px; font-size:0.85rem;">
+      Envie o PDF da nota fiscal, romaneio ou pedido do fornecedor. O sistema lê os dados automaticamente
+      e mostra tudo pra você conferir e corrigir antes de gravar no fornecedor, estoque e financeiro.
+    </p>
+    <div class="form-actions" style="margin-bottom:12px;">
+      <input type="file" id="import-arquivo" accept="application/pdf">
+      <button type="button" class="btn btn-primary" id="import-ler-btn">Ler documento</button>
+    </div>
+    <p id="import-status" style="display:none; font-size:0.85rem; color:var(--gray-400);"></p>
+
+    <div id="import-revisao" style="display:none; margin-top:20px; border-top:2px solid var(--off-white); padding-top:20px;">
+      <h2 style="font-size:1rem;">Fornecedor <span id="import-fornecedor-badge"></span></h2>
+      <div class="form-grid" style="margin-bottom:20px;">
+        <div class="form-field"><label>CNPJ</label><input type="text" id="rev-cnpj"></div>
+        <div class="form-field span-2"><label>Razão Social</label><input type="text" id="rev-razao-social"></div>
+        <div class="form-field"><label>Nome Fantasia</label><input type="text" id="rev-nome-fantasia"></div>
+        <div class="form-field span-2"><label>Logradouro</label><input type="text" id="rev-logradouro"></div>
+        <div class="form-field"><label>Número</label><input type="text" id="rev-numero"></div>
+        <div class="form-field"><label>Bairro</label><input type="text" id="rev-bairro"></div>
+        <div class="form-field"><label>CEP</label><input type="text" id="rev-cep"></div>
+        <div class="form-field"><label>Município</label><input type="text" id="rev-municipio"></div>
+        <div class="form-field"><label>UF</label><input type="text" id="rev-uf" maxlength="2" style="text-transform:uppercase;"></div>
+      </div>
+
+      <h2 style="font-size:1rem;">Itens comprados</h2>
+      <div class="table-scroll" style="margin-bottom:8px;">
+        <table class="admin-table">
+          <thead><tr><th>Descrição</th><th>Código</th><th>NCM</th><th>Qtd.</th><th>Vl. Unit.</th><th></th></tr></thead>
+          <tbody id="rev-itens-tbody"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-outline" id="rev-add-item" style="margin-bottom:20px;">+ Item</button>
+
+      <h2 style="font-size:1rem;">Pagamento</h2>
+      <div class="form-field" style="max-width:240px; margin-bottom:12px;">
+        <label>Forma de pagamento</label>
+        <select id="rev-forma-pagamento">
+          <option value="boleto">Boleto</option>
+          <option value="a_vista">À Vista</option>
+          <option value="pix">Pix</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+      <div class="table-scroll" style="margin-bottom:8px;">
+        <table class="admin-table">
+          <thead><tr><th>Vencimento</th><th>Valor</th><th></th></tr></thead>
+          <tbody id="rev-parcelas-tbody"></tbody>
+        </table>
+      </div>
+      <button type="button" class="btn btn-outline" id="rev-add-parcela" style="margin-bottom:20px;">+ Parcela</button>
+
+      <p id="import-erro" class="error-message" style="display:none;"></p>
+      <div class="form-actions">
+        <button type="button" class="btn btn-primary" id="import-confirmar-btn">Confirmar e Salvar</button>
+        <button type="button" class="btn btn-outline" id="import-cancelar-btn">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="admin-card">
     <input type="text" id="estoque-search" class="table-search" placeholder="Buscar por nome, código...">
     <div class="table-scroll">
