@@ -1,4 +1,6 @@
 var currentUserId = null;
+var currentUserRole = null;
+var ROLES_VENDEDOR = ['vendedor', 'vendedor_ext', 'vendedor_int'];
 var clientesCache = [];
 var catalogoCache = [];
 var selectedCliente = null;
@@ -43,6 +45,11 @@ async function loadClientesSelect() {
   var { data, error } = await supabaseClient.from('clientes').select('*').order('razao_social');
   if (error) { showToast('Erro ao carregar clientes: ' + error.message, 'error'); return; }
   clientesCache = data || [];
+
+  // Vendedor não faz pedido "pra" um fornecedor (ex: Altisvac) — isso é coisa de admin/estoque.
+  if (ROLES_VENDEDOR.indexOf(currentUserRole) !== -1) {
+    clientesCache = clientesCache.filter(function (c) { return !c.eh_fornecedor; });
+  }
 
   var select = document.getElementById('select-cliente');
   select.innerHTML = '<option value="">— Selecione —</option>' + clientesCache.map(function (c) {
@@ -927,6 +934,7 @@ window.iniciarEdicaoPedido = iniciarEdicaoPedido;
   var auth = await window.ADMIN_AUTH_READY;
   if (!auth) return;
   currentUserId = auth.session.user.id;
+  currentUserRole = auth.profile.role;
   await loadClientesSelect();
   renderGeraisItems();
   updateTotals();

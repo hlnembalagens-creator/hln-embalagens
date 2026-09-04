@@ -1,5 +1,6 @@
 var currentUserId = null;
 var currentUserRole = null;
+var ROLES_VENDEDOR = ['vendedor', 'vendedor_ext', 'vendedor_int'];
 var allClientes = [];
 
 var fieldIds = [
@@ -86,6 +87,11 @@ async function loadClientes() {
   }
 
   allClientes = data || [];
+
+  // Vendedor não enxerga cadastros de fornecedor (ex: Altisvac, Capital) — só clientes de verdade.
+  if (ROLES_VENDEDOR.indexOf(currentUserRole) !== -1) {
+    allClientes = allClientes.filter(function (c) { return !c.eh_fornecedor; });
+  }
 
   var { data: pendentes } = await supabaseClient
     .from('pedidos')
