@@ -12,16 +12,26 @@ function toNumberEstoque(v) {
   return isNaN(n) ? 0 : n;
 }
 
+// Margem sobre o custo: quanto o preço de venda está acima do que pagamos.
+function calcularMargemPercentualEstoque(custo, venda) {
+  if (!custo || custo <= 0 || venda == null) return null;
+  return ((venda - custo) / custo) * 100;
+}
+function formatarMargemEstoque(margem) {
+  if (margem == null) return '—';
+  return margem.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+}
+
 function renderHeadEstoque() {
   var thead = document.getElementById('estoque-thead');
   thead.innerHTML = isAdminEstoque
-    ? '<tr><th>Nome</th><th>Código</th><th>NCM</th><th>Preço Unit.</th><th>Estoque</th><th></th></tr>'
+    ? '<tr><th>Nome</th><th>Código</th><th>NCM</th><th>Custo Unit.</th><th>Venda Unit.</th><th>Margem</th><th>Estoque</th><th></th></tr>'
     : '<tr><th>Nome</th><th>Estoque</th></tr>';
 }
 
 function renderEstoqueTable(list) {
   var tbody = document.getElementById('estoque-tbody');
-  var colspan = isAdminEstoque ? 6 : 2;
+  var colspan = isAdminEstoque ? 8 : 2;
   if (!list.length) {
     tbody.innerHTML = '<tr><td colspan="' + colspan + '">Nenhum produto cadastrado ainda.</td></tr>';
     return;
@@ -37,14 +47,18 @@ function renderEstoqueTable(list) {
   tbody.innerHTML = list.map(function (p) {
     var codigoCell = p.codigo_produto ? p.codigo_produto : '<span class="badge badge-warning">Pendente</span>';
     var ncmCell = p.ncm ? p.ncm : '<span class="badge badge-warning">Pendente</span>';
+    var custo = p.preco_custo != null ? 'R$ ' + Number(p.preco_custo).toFixed(2).replace('.', ',') : '—';
     var preco = p.preco_unitario != null ? 'R$ ' + Number(p.preco_unitario).toFixed(2).replace('.', ',') : '—';
+    var margem = formatarMargemEstoque(calcularMargemPercentualEstoque(p.preco_custo, p.preco_unitario));
     var estoqueBaixo = (p.quantidade_estoque || 0) <= 0 ? ' <span class="badge badge-warning">Sem estoque</span>' : '';
 
     return '<tr>' +
       '<td>' + p.nome_produto + '</td>' +
       '<td>' + codigoCell + '</td>' +
       '<td>' + ncmCell + '</td>' +
+      '<td>' + custo + '</td>' +
       '<td>' + preco + '</td>' +
+      '<td>' + margem + '</td>' +
       '<td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + estoqueBaixo + '</td>' +
       '<td class="row-actions"><button data-ajustar="' + p.id + '">Ajustar</button></td>' +
     '</tr>';

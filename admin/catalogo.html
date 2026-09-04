@@ -58,8 +58,17 @@
           <span class="hint">Opcional — pode preencher depois.</span>
         </div>
         <div class="form-field">
-          <label for="preco_unitario">Preço Unitário (R$)</label>
+          <label for="preco_custo">Preço de Custo Unitário (R$)</label>
+          <input type="text" inputmode="decimal" id="preco_custo">
+          <span class="hint">Quanto pagamos pro fornecedor. Preenchido sozinho quando vem de uma leitura de NF.</span>
+        </div>
+        <div class="form-field">
+          <label for="preco_unitario">Preço de Venda Unitário (R$)</label>
           <input type="text" inputmode="decimal" id="preco_unitario">
+        </div>
+        <div class="form-field">
+          <label>Margem</label>
+          <span class="calc-readout" id="margem-readout">—</span>
         </div>
       </div>
       <p id="produto-error" class="error-message" style="display:none;"></p>
@@ -86,12 +95,14 @@
             <th>Nome</th>
             <th>Código</th>
             <th>NCM</th>
-            <th>Preço Unit.</th>
+            <th>Custo Unit.</th>
+            <th>Venda Unit.</th>
+            <th>Margem</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="produtos-tbody">
-          <tr><td colspan="5">Carregando...</td></tr>
+          <tr><td colspan="7">Carregando...</td></tr>
         </tbody>
       </table>
     </div>

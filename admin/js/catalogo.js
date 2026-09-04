@@ -19,7 +19,28 @@ function resetProdutoForm() {
   document.getElementById('produto-id').value = '';
   document.getElementById('form-title').textContent = 'Novo produto';
   document.getElementById('produto-error').style.display = 'none';
+  atualizarMargemReadout();
 }
+
+// Margem sobre o custo: quanto o preço de venda está acima do que pagamos.
+function calcularMargemPercentual(custo, venda) {
+  if (!custo || custo <= 0 || venda == null) return null;
+  return ((venda - custo) / custo) * 100;
+}
+
+function formatarMargem(margem) {
+  if (margem == null) return '—';
+  return margem.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+}
+
+function atualizarMargemReadout() {
+  var custo = toNumber(document.getElementById('preco_custo').value);
+  var venda = toNumber(document.getElementById('preco_unitario').value);
+  document.getElementById('margem-readout').textContent = formatarMargem(calcularMargemPercentual(custo, venda));
+}
+
+document.getElementById('preco_custo').addEventListener('input', atualizarMargemReadout);
+document.getElementById('preco_unitario').addEventListener('input', atualizarMargemReadout);
 
 async function loadProdutos() {
   var { data, error } = await supabaseClient
@@ -39,7 +60,7 @@ async function loadProdutos() {
 function renderProdutosTable(list) {
   var tbody = document.getElementById('produtos-tbody');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="5">Nenhum produto cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7">Nenhum produto cadastrado ainda.</td></tr>';
     return;
   }
 
@@ -50,15 +71,19 @@ function renderProdutosTable(list) {
     var ncmCell = p.ncm
       ? p.ncm
       : '<span class="badge badge-warning">Pendente</span>';
+    var custo = p.preco_custo != null ? 'R$ ' + Number(p.preco_custo).toFixed(2).replace('.', ',') : '—';
     var preco = p.preco_unitario != null
       ? 'R$ ' + Number(p.preco_unitario).toFixed(2).replace('.', ',')
       : '—';
+    var margem = formatarMargem(calcularMargemPercentual(p.preco_custo, p.preco_unitario));
 
     return '<tr>' +
       '<td>' + p.nome_produto + '</td>' +
       '<td>' + codigoCell + '</td>' +
       '<td>' + ncmCell + '</td>' +
+      '<td>' + custo + '</td>' +
       '<td>' + preco + '</td>' +
+      '<td>' + margem + '</td>' +
       '<td class="row-actions">' +
         '<button data-edit="' + p.id + '">Editar</button>' +
         (currentUserRole !== 'admin1' ? '<button data-delete="' + p.id + '" class="danger">Excluir</button>' : '') +
@@ -74,7 +99,9 @@ function renderProdutosTable(list) {
       document.getElementById('nome_produto').value = produto.nome_produto || '';
       document.getElementById('codigo_produto').value = produto.codigo_produto || '';
       document.getElementById('ncm').value = produto.ncm || '';
+      document.getElementById('preco_custo').value = produto.preco_custo != null ? produto.preco_custo : '';
       document.getElementById('preco_unitario').value = produto.preco_unitario != null ? produto.preco_unitario : '';
+      atualizarMargemReadout();
       document.getElementById('form-title').textContent = 'Editar produto';
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -100,7 +127,7 @@ function renderProdutosTable(list) {
 
 /* ===================== EXPORTAR / IMPORTAR EXCEL ===================== */
 
-var PRODUTO_COLUNAS_EXCEL = ['nome_produto', 'codigo_produto', 'ncm', 'preco_unitario'];
+var PRODUTO_COLUNAS_EXCEL = ['nome_produto', 'codigo_produto', 'ncm', 'preco_custo', 'preco_unitario'];
 
 document.getElementById('btn-exportar-produtos').addEventListener('click', function () {
   var linhas = allProdutos.map(function (p) {
@@ -108,6 +135,7 @@ document.getElementById('btn-exportar-produtos').addEventListener('click', funct
       nome_produto: p.nome_produto || '',
       codigo_produto: p.codigo_produto || '',
       ncm: p.ncm || '',
+      preco_custo: p.preco_custo != null ? p.preco_custo : '',
       preco_unitario: p.preco_unitario != null ? p.preco_unitario : ''
     };
   });
@@ -148,7 +176,9 @@ document.getElementById('input-importar-produtos').addEventListener('change', as
 
     var codigo = campoExcel(linha, ['codigo_produto', 'Código do Produto', 'Código']);
     var ncm = campoExcel(linha, ['ncm', 'NCM']);
-    var precoTexto = campoExcel(linha, ['preco_unitario', 'Preço Unitário', 'Preço']);
+    var custoTexto = campoExcel(linha, ['preco_custo', 'Preço de Custo', 'Custo']);
+    var custo = custoTexto ? toNumber(custoTexto) : null;
+    var precoTexto = campoExcel(linha, ['preco_unitario', 'Preço Unitário', 'Preço', 'Preço de Venda']);
     var preco = precoTexto ? toNumber(precoTexto) : null;
 
     var existente = produtosConhecidos.find(function (p) {
@@ -156,7 +186,7 @@ document.getElementById('input-importar-produtos').addEventListener('change', as
     });
 
     var values = {
-      nome_produto: nome, codigo_produto: codigo || null, ncm: ncm || null, preco_unitario: preco
+      nome_produto: nome, codigo_produto: codigo || null, ncm: ncm || null, preco_custo: custo, preco_unitario: preco
     };
 
     var resultado;
@@ -224,6 +254,7 @@ document.getElementById('produto-form').addEventListener('submit', async functio
     nome_produto: nome,
     codigo_produto: codigo || null,
     ncm: ncm || null,
+    preco_custo: document.getElementById('preco_custo').value ? toNumber(document.getElementById('preco_custo').value) : null,
     preco_unitario: document.getElementById('preco_unitario').value ? toNumber(document.getElementById('preco_unitario').value) : null
   };
 
