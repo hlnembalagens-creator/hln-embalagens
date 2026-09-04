@@ -83,7 +83,7 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{
           role: 'user',
           content: [
@@ -105,14 +105,21 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  var textoResposta = (aiData.content && aiData.content[0] && aiData.content[0].text) || '';
+  var blocoTexto = (aiData.content || []).find(function (b) { return b.type === 'text'; });
+  var textoResposta = (blocoTexto && blocoTexto.text) || '';
   var jsonLimpo = textoResposta.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
 
   var extraido;
   try {
     extraido = JSON.parse(jsonLimpo);
   } catch (err) {
-    res.status(502).json({ error: 'Não consegui interpretar a resposta da leitura. Tente novamente ou preencha manualmente.' });
+    var motivo = aiData.stop_reason === 'max_tokens'
+      ? 'A resposta ficou grande demais e foi cortada (documento com muitos itens).'
+      : 'Não consegui interpretar a resposta da leitura.';
+    res.status(502).json({
+      error: motivo + ' Tente novamente ou preencha manualmente.',
+      debug: jsonLimpo.slice(0, 500)
+    });
     return;
   }
 

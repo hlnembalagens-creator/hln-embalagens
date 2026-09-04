@@ -233,6 +233,11 @@ document.getElementById('import-ler-btn').addEventListener('click', async functi
     return;
   }
 
+  if (file.size > 4 * 1024 * 1024) {
+    showToast('Esse PDF tem ' + (file.size / (1024 * 1024)).toFixed(1) + 'MB — o limite é 4MB. Tenta escanear com menos qualidade ou só as páginas que importam.', 'error');
+    return;
+  }
+
   var btn = this;
   btn.disabled = true;
   btn.textContent = 'Lendo...';
@@ -252,7 +257,8 @@ document.getElementById('import-ler-btn').addEventListener('click', async functi
     var respData = await resp.json().catch(function () { return {}; });
 
     if (!resp.ok) {
-      statusEl.textContent = 'Erro: ' + (respData.error || 'falha ao ler o documento.');
+      statusEl.textContent = 'Erro: ' + (respData.error || 'falha ao ler o documento.') +
+        (respData.debug ? ' [debug: ' + respData.debug + ']' : '');
       showToast('Não foi possível ler o documento.', 'error');
       return;
     }
