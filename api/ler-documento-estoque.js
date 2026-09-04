@@ -36,7 +36,7 @@ var PROMPT = 'Você vai analisar uma Nota Fiscal (NF-e/DANFE), romaneio ou pedid
   '  },\n' +
   '  "documento": { "tipo": "nf ou romaneio ou pedido", "numero": "string ou null", "data_emissao": "YYYY-MM-DD ou null" },\n' +
   '  "itens": [\n' +
-  '    { "descricao": "string", "codigo": "string ou null", "ncm": "string ou null", "quantidade": 0, "valor_unitario": 0, "valor_total": 0 }\n' +
+  '    { "descricao": "string", "codigo": "string ou null", "ncm": "string ou null", "cfop": "string ou null", "quantidade": 0, "valor_unitario": 0, "valor_total": 0 }\n' +
   '  ],\n' +
   '  "pagamento": {\n' +
   '    "forma": "boleto ou a_vista ou pix ou outro",\n' +
@@ -47,7 +47,13 @@ var PROMPT = 'Você vai analisar uma Nota Fiscal (NF-e/DANFE), romaneio ou pedid
   'Regras: números sempre como number puro (nunca string, nunca "R$", nunca vírgula decimal — use ponto). ' +
   'Datas sempre "YYYY-MM-DD". Se não achar um valor, use null (nunca invente). ' +
   'Se o documento tiver parcelas/faturas com datas de vencimento, liste todas em pagamento.parcelas. ' +
-  'Se não houver parcelamento explícito, coloque uma única parcela com o valor total e vencimento null.';
+  'Se não houver parcelamento explícito, coloque uma única parcela com o valor total e vencimento null.\n\n' +
+  'ATENÇÃO — se o documento for uma NF-e/DANFE (nota fiscal eletrônica), a tabela "Itens da nota fiscal" tem colunas nesta ordem: ' +
+  'Código, Descrição do produto/serviço, NCM/SH, CSOSN, CFOP, UN (unidade), Qtde (quantidade), Preço un, Preço total, BC ICMS, Vlr ICMS, Vlr IPI, %ICMS, %IPI. ' +
+  'O CFOP é um código de 4 dígitos (ex: 5102, 6102) que identifica o tipo de operação fiscal — NUNCA é a quantidade comprada, mesmo que fique visualmente perto ou pareça um número "solto". ' +
+  'A quantidade real está na coluna "Qtde", normalmente com casas decimais (ex: 5,00000). ' +
+  'Depois de extrair, CONFIRA: quantidade × valor_unitario deve bater com valor_total (e valor_total de todos os itens deve bater com o total da nota). ' +
+  'Se não bater, você pegou o campo errado — corrija antes de responder.';
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
