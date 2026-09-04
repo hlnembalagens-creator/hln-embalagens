@@ -1,4 +1,5 @@
 var isAdminEstoque = false;
+var ROLES_VENDEDOR_ESTOQUE = ['vendedor', 'vendedor_ext', 'vendedor_int'];
 var allProdutosEstoque = [];
 
 function toNumberEstoque(v) {
@@ -485,12 +486,74 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
   }
 });
 
+/* ===================== EXPORTAR LISTA DE PREÇO ===================== */
+
+var BRAND_MARK_HTML_ESTOQUE =
+  '<div class="brand-mark" role="img" aria-label="HLN Embalagens e Equipamentos">' +
+    '<span class="bm-label" aria-hidden="true">Embalagens</span>' +
+    '<svg class="bm-arc" viewBox="0 0 200 40" aria-hidden="true">' +
+      '<path d="M6 38 Q100 2 194 38"/><path d="M30 38 Q100 14 170 38"/><path d="M54 38 Q100 24 146 38"/>' +
+    '</svg>' +
+    '<span class="bm-hln" aria-hidden="true">HLN</span>' +
+    '<svg class="bm-arc" viewBox="0 0 200 40" aria-hidden="true">' +
+      '<path d="M6 2 Q100 38 194 2"/><path d="M30 2 Q100 26 170 2"/><path d="M54 2 Q100 16 146 2"/>' +
+    '</svg>' +
+    '<span class="bm-label" aria-hidden="true">e Equipamentos</span>' +
+  '</div>';
+
+function formatBRLEstoque(n) {
+  return 'R$ ' + toNumberEstoque(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function buildListaPrecoHtml(produtos) {
+  var dataStr = new Date().toLocaleDateString('pt-BR');
+  var linhasHtml = produtos.map(function (p) {
+    return '<tr>' +
+      '<td>' + p.nome_produto + '</td>' +
+      '<td>' + (p.codigo_produto || '—') + '</td>' +
+      '<td>' + formatBRLEstoque(p.preco_unitario) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  return '<div class="orcamento-via">' +
+    '<div class="orcamento-header">' +
+      '<div>' + BRAND_MARK_HTML_ESTOQUE +
+        '<div class="orcamento-empresa-dados">' +
+          'HLN Embalagens e Equipamentos<br>' +
+          'CNPJ: 66.878.650/0001-42<br>' +
+          'Jardim Nossa Senhora de Fátima, Americana - SP, CEP 13478-570' +
+        '</div>' +
+      '</div>' +
+      '<div class="orcamento-titulo"><h1>LISTA DE PREÇOS</h1>Data: ' + dataStr + '</div>' +
+    '</div>' +
+    '<table><thead><tr><th>Produto</th><th>Código</th><th>Preço</th></tr></thead><tbody>' + linhasHtml + '</tbody></table>' +
+  '</div>';
+}
+
+document.getElementById('btn-exportar-lista-preco').addEventListener('click', function () {
+  var produtosComPreco = allProdutosEstoque
+    .filter(function (p) { return p.preco_unitario != null; })
+    .slice()
+    .sort(function (a, b) { return (a.nome_produto || '').localeCompare(b.nome_produto || ''); });
+
+  if (!produtosComPreco.length) {
+    showToast('Nenhum produto com preço de venda cadastrado ainda.', 'warning');
+    return;
+  }
+
+  document.getElementById('lista-preco-sheet').innerHTML = buildListaPrecoHtml(produtosComPreco);
+  var tituloOriginal = document.title;
+  document.title = 'Lista de Preços - Portal HLN';
+  window.print();
+  document.title = tituloOriginal;
+});
+
 /* ===================== INIT ===================== */
 
 (async function () {
   var auth = await window.ADMIN_AUTH_READY;
   if (!auth) return;
-  isAdminEstoque = auth.profile.role !== 'vendedor';
+  isAdminEstoque = ROLES_VENDEDOR_ESTOQUE.indexOf(auth.profile.role) === -1;
   currentUserIdEstoque = auth.session.user.id;
   renderHeadEstoque();
   loadProdutosEstoque();
