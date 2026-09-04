@@ -32,10 +32,18 @@ window.ADMIN_AUTH_READY = (async function () {
     return new Promise(function () {});
   }
 
-  // Vendedor só enxerga Dashboard, Pedido e Clientes — as demais páginas são
-  // administrativas (catálogo, financeiro, calculadora de custo).
+  // Vendedor (interno ou externo, é só etiqueta — mesmo acesso) só enxerga
+  // Dashboard, Pedido e Clientes — as demais páginas são administrativas.
+  var ROLES_VENDEDOR = ['vendedor', 'vendedor_ext', 'vendedor_int'];
+  var ehVendedor = ROLES_VENDEDOR.indexOf(profile.role) !== -1;
   var PAGINAS_SOMENTE_ADMIN = ['catalogo', 'financeiro', 'calculadora-custo'];
-  if (profile.role === 'vendedor' && PAGINAS_SOMENTE_ADMIN.indexOf(CURRENT_PAGE) !== -1) {
+  if (ehVendedor && PAGINAS_SOMENTE_ADMIN.indexOf(CURRENT_PAGE) !== -1) {
+    location.replace('dashboard.html');
+    return new Promise(function () {});
+  }
+
+  // Usuários só é acessível pro Administrador pleno (não ADM 1, não vendedor).
+  if (profile.role !== 'admin' && CURRENT_PAGE === 'usuarios') {
     location.replace('dashboard.html');
     return new Promise(function () {});
   }
@@ -46,8 +54,14 @@ window.ADMIN_AUTH_READY = (async function () {
   var nameEls = document.querySelectorAll('[data-user-name]');
   nameEls.forEach(function (el) { el.textContent = profile.nome_exibicao; });
 
-  if (profile.role === 'vendedor') {
+  if (ehVendedor) {
     document.querySelectorAll('[data-role-admin]').forEach(function (el) { el.remove(); });
+  }
+
+  // Só o Administrador pleno enxerga [data-role-full-admin] (ex: painel de
+  // usuários) — ADM 1 tem o resto do acesso admin, mas não isso.
+  if (profile.role !== 'admin') {
+    document.querySelectorAll('[data-role-full-admin]').forEach(function (el) { el.remove(); });
   }
 
   var logoutBtns = document.querySelectorAll('[data-logout]');

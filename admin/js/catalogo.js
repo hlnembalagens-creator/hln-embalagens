@@ -1,4 +1,5 @@
 var currentUserId = null;
+var currentUserRole = null;
 var allProdutos = [];
 
 // Aceita números no formato brasileiro (vírgula decimal, ponto de milhar).
@@ -60,7 +61,7 @@ function renderProdutosTable(list) {
       '<td>' + preco + '</td>' +
       '<td class="row-actions">' +
         '<button data-edit="' + p.id + '">Editar</button>' +
-        '<button data-delete="' + p.id + '" class="danger">Excluir</button>' +
+        (currentUserRole !== 'admin1' ? '<button data-delete="' + p.id + '" class="danger">Excluir</button>' : '') +
       '</td>' +
     '</tr>';
   }).join('');
@@ -258,5 +259,6 @@ document.getElementById('produto-cancel-btn').addEventListener('click', resetPro
   var auth = await window.ADMIN_AUTH_READY;
   if (!auth) return;
   currentUserId = auth.session.user.id;
+  currentUserRole = auth.profile.role;
   loadProdutos();
 })();

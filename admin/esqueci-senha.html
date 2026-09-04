@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Esqueci minha senha — Portal HLN</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<div class="login-shell">
+  <div class="login-card">
+    <div class="brand-mark" role="img" aria-label="HLN Embalagens e Equipamentos">
+      <span class="bm-label" aria-hidden="true">Embalagens</span>
+      <svg class="bm-arc" viewBox="0 0 200 40" aria-hidden="true">
+        <path d="M6 38 Q100 2 194 38"/>
+        <path d="M30 38 Q100 14 170 38"/>
+        <path d="M54 38 Q100 24 146 38"/>
+      </svg>
+      <span class="bm-hln" aria-hidden="true">HLN</span>
+      <svg class="bm-arc" viewBox="0 0 200 40" aria-hidden="true">
+        <path d="M6 2 Q100 38 194 2"/>
+        <path d="M30 2 Q100 26 170 2"/>
+        <path d="M54 2 Q100 16 146 2"/>
+      </svg>
+      <span class="bm-label" aria-hidden="true">e Equipamentos</span>
+    </div>
+    <h1>Esqueci minha senha</h1>
+    <p style="text-align:center; color:var(--gray-400); font-size:0.85rem; margin-top:-16px; margin-bottom:20px;">
+      Informe seu usuário e o e-mail cadastrado. Se baterem, você recebe um link pra criar uma nova senha.
+    </p>
+
+    <form id="esqueci-form">
+      <div class="form-field" style="margin-bottom:14px;">
+        <label for="username">Usuário</label>
+        <input type="text" id="username" required autofocus>
+      </div>
+      <div class="form-field" style="margin-bottom:20px;">
+        <label for="email">E-mail cadastrado</label>
+        <input type="email" id="email" required>
+      </div>
+      <p id="esqueci-msg" style="display:none; font-size:0.85rem; margin-bottom:16px;"></p>
+      <button type="submit" class="btn btn-primary btn-block" id="esqueci-btn">Enviar link de redefinição</button>
+    </form>
+    <p style="text-align:center; margin-top:16px;">
+      <a href="login.html" style="color:var(--blue-accent); font-size:0.85rem;">Voltar pro login</a>
+    </p>
+  </div>
+</div>
+
+<script>
+  document.getElementById('esqueci-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var btn = document.getElementById('esqueci-btn');
+    var msgEl = document.getElementById('esqueci-msg');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+      var resp = await fetch('/api/esqueci-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nomeUsuario: document.getElementById('username').value,
+          email: document.getElementById('email').value
+        })
+      });
+      var data = await resp.json().catch(function () { return {}; });
+      msgEl.style.color = resp.ok ? '#0f7a3d' : '#a92323';
+      msgEl.textContent = resp.ok
+        ? (data.message || 'Se os dados estiverem certos, você vai receber um e-mail com as instruções.')
+        : (data.error || 'Erro ao processar o pedido.');
+      msgEl.style.display = 'block';
+    } catch (err) {
+      msgEl.style.color = '#a92323';
+      msgEl.textContent = 'Erro de conexão. Tente novamente.';
+      msgEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar link de redefinição';
+    }
+  });
+</script>
+</body>
+</html>

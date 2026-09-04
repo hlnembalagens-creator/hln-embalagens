@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usuários — Portal HLN</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="admin-brand">HLN Portal</div>
+  <nav class="admin-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="pedido.html">Pedido</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="catalogo.html" data-role-admin>Catálogo</a>
+    <a href="estoque.html">Estoque</a>
+    <a href="financeiro.html" data-role-admin>Financeiro</a>
+    <a href="calculadora-custo.html" data-role-admin>Calculadora de Custo</a>
+    <a href="usuarios.html" class="active" data-role-full-admin>Usuários</a>
+  </nav>
+  <div class="admin-user">
+    <span>Olá, <span data-user-name>—</span></span>
+    <a href="trocar-senha.html" style="color:#cfd9ea; font-size:0.85rem;">Trocar senha</a>
+    <button data-logout>Sair</button>
+  </div>
+</header>
+
+<main class="admin-main">
+  <h1 class="admin-title">Usuários</h1>
+
+  <div class="admin-card">
+    <h2 id="form-title">Novo usuário</h2>
+    <form id="usuario-form">
+      <div class="form-grid" style="margin-bottom:16px;">
+        <div class="form-field">
+          <label for="nome_exibicao">Nome de exibição *</label>
+          <input type="text" id="nome_exibicao" required>
+        </div>
+        <div class="form-field">
+          <label for="nome_usuario">Usuário (login) *</label>
+          <input type="text" id="nome_usuario" required>
+          <span class="hint">Vira o login — sem espaço, sem acento.</span>
+        </div>
+        <div class="form-field">
+          <label for="email_pessoal">E-mail pessoal</label>
+          <input type="email" id="email_pessoal">
+          <span class="hint">Usado só pra "esqueci minha senha". Opcional, pode preencher depois.</span>
+        </div>
+        <div class="form-field">
+          <label for="role">Perfil *</label>
+          <select id="role" required>
+            <option value="vendedor_ext">Vendedor Externo</option>
+            <option value="vendedor_int">Vendedor Interno</option>
+            <option value="admin1">ADM 1</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="senha_inicial">Senha temporária *</label>
+          <input type="text" id="senha_inicial" required>
+          <span class="hint">A pessoa é obrigada a trocar no primeiro login.</span>
+        </div>
+      </div>
+      <p id="usuario-error" class="error-message" style="display:none;"></p>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="usuario-save-btn">Criar usuário</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="admin-card">
+    <h2>Usuários cadastrados</h2>
+    <div class="table-scroll">
+      <table class="admin-table">
+        <thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Troca senha pendente</th><th></th></tr></thead>
+        <tbody id="usuarios-tbody"><tr><td colspan="5">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL RESETAR SENHA -->
+<div class="modal-overlay" id="modal-resetar-senha">
+  <div class="modal-box" style="max-width:420px;">
+    <h3>Resetar senha</h3>
+    <p id="resetar-usuario-nome" style="margin-bottom:16px; color:var(--gray-700); font-weight:600;"></p>
+    <div class="form-field" style="margin-bottom:16px;">
+      <label for="resetar-nova-senha">Nova senha temporária</label>
+      <input type="text" id="resetar-nova-senha">
+    </div>
+    <p id="resetar-error" class="error-message" style="display:none;"></p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" id="resetar-confirmar">Resetar</button>
+      <button type="button" class="btn btn-outline" id="resetar-cancelar">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/admin-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/usuarios.js"></script>
+</body>
+</html>

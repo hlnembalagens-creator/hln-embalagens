@@ -1,4 +1,5 @@
 var currentUserId = null;
+var currentUserRole = null;
 var allClientes = [];
 
 var fieldIds = [
@@ -126,7 +127,7 @@ function renderClientesTable(list) {
       '<td class="row-actions">' +
         '<button data-historico="' + c.id + '">Histórico</button>' +
         '<button data-edit="' + c.id + '">Editar</button>' +
-        '<button data-delete="' + c.id + '" class="danger">Excluir</button>' +
+        (currentUserRole !== 'admin1' ? '<button data-delete="' + c.id + '" class="danger">Excluir</button>' : '') +
       '</td>' +
     '</tr>';
   }).join('');
@@ -461,6 +462,7 @@ document.getElementById('cliente-cancel-btn').addEventListener('click', resetFor
   var auth = await window.ADMIN_AUTH_READY;
   if (!auth) return;
   currentUserId = auth.session.user.id;
+  currentUserRole = auth.profile.role;
   loadClientes();
 })();
 
