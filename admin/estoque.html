@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estoque — Portal HLN</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="admin-brand">HLN Portal</div>
+  <nav class="admin-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="pedido.html">Pedido</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="catalogo.html" data-role-admin>Catálogo</a>
+    <a href="estoque.html" class="active">Estoque</a>
+    <a href="financeiro.html" data-role-admin>Financeiro</a>
+    <a href="calculadora-custo.html" data-role-admin>Calculadora de Custo</a>
+  </nav>
+  <div class="admin-user">
+    <span>Olá, <span data-user-name>—</span></span>
+    <a href="trocar-senha.html" style="color:#cfd9ea; font-size:0.85rem;">Trocar senha</a>
+    <button data-logout>Sair</button>
+  </div>
+</header>
+
+<main class="admin-main">
+  <h1 class="admin-title">Estoque</h1>
+
+  <div class="admin-card">
+    <input type="text" id="estoque-search" class="table-search" placeholder="Buscar por nome, código...">
+    <div class="table-scroll">
+      <table class="admin-table">
+        <thead id="estoque-thead"></thead>
+        <tbody id="estoque-tbody">
+          <tr><td colspan="6">Carregando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- MODAL AJUSTAR QUANTIDADE (admin) -->
+<div class="modal-overlay" id="modal-ajustar-estoque">
+  <div class="modal-box" style="max-width:420px;">
+    <h3>Ajustar quantidade em estoque</h3>
+    <p id="ajustar-produto-nome" style="margin-bottom:16px; color:var(--gray-700); font-weight:600;"></p>
+    <div class="form-field" style="margin-bottom:16px;">
+      <label for="ajustar-quantidade">Quantidade atual</label>
+      <input type="text" inputmode="decimal" id="ajustar-quantidade">
+    </div>
+    <p id="ajustar-error" class="error-message" style="display:none;"></p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" id="ajustar-confirmar">Salvar</button>
+      <button type="button" class="btn btn-outline" id="ajustar-cancelar">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/admin-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/estoque.js"></script>
+</body>
+</html>
