@@ -48,6 +48,13 @@
 
     <div id="import-revisao" style="display:none; margin-top:20px; border-top:2px solid var(--off-white); padding-top:20px;">
       <h2 style="font-size:1rem;">Fornecedor <span id="import-fornecedor-badge"></span></h2>
+      <div class="form-field" style="margin-bottom:16px; max-width:420px;">
+        <label for="rev-fornecedor-existente">Já é um fornecedor cadastrado?</label>
+        <select id="rev-fornecedor-existente">
+          <option value="">— Novo fornecedor —</option>
+        </select>
+        <span class="hint">Se o documento não trouxer o CNPJ (comum em romaneio), selecione aqui direto.</span>
+      </div>
       <div class="form-grid" style="margin-bottom:20px;">
         <div class="form-field"><label>CNPJ</label><input type="text" id="rev-cnpj"></div>
         <div class="form-field span-2"><label>Razão Social</label><input type="text" id="rev-razao-social"></div>
