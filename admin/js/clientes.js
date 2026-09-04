@@ -23,13 +23,16 @@ function setFormValues(cliente) {
   });
   document.getElementById('telefone_empresa').value = formatarTelefone(document.getElementById('telefone_empresa').value);
   document.getElementById('contato_telefone').value = formatarTelefone(document.getElementById('contato_telefone').value);
-  document.getElementById('tipo_cadastro').value = (cliente && cliente.eh_fornecedor) ? 'fornecedor' : 'cliente';
+  // Vendedor não tem esse campo na tela (não pode cadastrar fornecedor).
+  var tipoCadastroEl = document.getElementById('tipo_cadastro');
+  if (tipoCadastroEl) tipoCadastroEl.value = (cliente && cliente.eh_fornecedor) ? 'fornecedor' : 'cliente';
 }
 
 function resetForm() {
   document.getElementById('cliente-form').reset();
   document.getElementById('cliente-id').value = '';
-  document.getElementById('tipo_cadastro').value = 'cliente';
+  var tipoCadastroElReset = document.getElementById('tipo_cadastro');
+  if (tipoCadastroElReset) tipoCadastroElReset.value = 'cliente';
   document.getElementById('form-title').textContent = 'Novo cliente';
   document.getElementById('cliente-error').style.display = 'none';
   document.getElementById('cnpj-status').textContent = '';
@@ -416,8 +419,16 @@ document.getElementById('cliente-form').addEventListener('submit', async functio
   }
 
   var values = getFormValues();
-  values.eh_fornecedor = document.getElementById('tipo_cadastro').value === 'fornecedor';
   var clienteId = document.getElementById('cliente-id').value;
+  var tipoCadastroSubmit = document.getElementById('tipo_cadastro');
+  if (tipoCadastroSubmit) {
+    values.eh_fornecedor = tipoCadastroSubmit.value === 'fornecedor';
+  } else {
+    // Vendedor não tem esse campo — preserva o valor que já estava salvo (nunca cria
+    // fornecedor, mas também nunca rebaixa um fornecedor existente sem querer).
+    var clienteOriginal = clienteId ? allClientes.find(function (c) { return c.id === clienteId; }) : null;
+    values.eh_fornecedor = clienteOriginal ? !!clienteOriginal.eh_fornecedor : false;
+  }
 
   var cnpjDigitado = normalizarCnpj(values.cnpj_cpf);
   if (cnpjDigitado) {
