@@ -52,7 +52,7 @@ module.exports = async function handler(req, res) {
 
     var linkResp = await fetch(SUPABASE_URL + '/auth/v1/admin/generate_link', {
       method: 'POST', headers: adminHeaders,
-      body: JSON.stringify({ type: 'recovery', email: usernameToEmail(nomeUsuario), options: { redirect_to: REDIRECT_TO } })
+      body: JSON.stringify({ type: 'recovery', email: usernameToEmail(nomeUsuario), redirect_to: REDIRECT_TO })
     });
     var linkData = await linkResp.json();
 
