@@ -40,21 +40,29 @@ async function carregarConversas() {
   (data || []).forEach(function (m) {
     var tel = m.telefone_contato;
     if (!porTelefone[tel]) {
-      var nomeCliente = m.clientes ? (m.clientes.razao_social || m.clientes.nome_fantasia) : null;
       porTelefone[tel] = {
         telefone: tel,
-        nome: nomeCliente || m.nome_contato || formatarTelefoneExibicao(tel),
+        nome: null,
         clienteId: m.cliente_id,
         ultimoCorpo: m.corpo,
         ultimoEm: m.criado_em,
         naoLidas: 0
       };
     }
+    // O nome (do cliente cadastrado, ou do perfil do WhatsApp) só vem em mensagens
+    // de entrada — não sobrescreve com null quando a mais recente é uma que nós enviamos.
+    if (!porTelefone[tel].nome) {
+      var nomeCliente = m.clientes ? (m.clientes.razao_social || m.clientes.nome_fantasia) : null;
+      porTelefone[tel].nome = nomeCliente || m.nome_contato || null;
+    }
     if (m.direcao === 'entrada' && !m.lida) porTelefone[tel].naoLidas++;
   });
 
-  conversas = Object.keys(porTelefone).map(function (k) { return porTelefone[k]; })
-    .sort(function (a, b) { return new Date(b.ultimoEm) - new Date(a.ultimoEm); });
+  conversas = Object.keys(porTelefone).map(function (k) {
+    var c = porTelefone[k];
+    c.nome = c.nome || formatarTelefoneExibicao(c.telefone);
+    return c;
+  }).sort(function (a, b) { return new Date(b.ultimoEm) - new Date(a.ultimoEm); });
 
   renderConversas();
 }
