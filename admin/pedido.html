@@ -169,6 +169,18 @@
       </div>
     </div>
 
+    <div class="form-grid" id="pix-info-group" style="display:none;">
+      <div class="form-field">
+        <label>Chave Pix</label>
+        <span class="calc-readout">66878650000142</span>
+      </div>
+      <div class="form-field">
+        <label for="pix_dias">Pix — dias para pagamento</label>
+        <input type="number" id="pix_dias" min="1">
+        <span class="hint">Caso o cliente prefira pagar via Pix mesmo com outra forma combinada.</span>
+      </div>
+    </div>
+
     <div class="totals-bar">
       <div class="total-item">
         <span class="total-label">Quantidade total</span>
@@ -282,6 +294,23 @@
       <button type="button" class="btn btn-primary" id="orcamento-preview-confirmar">Confirmar e Imprimir</button>
       <button type="button" class="btn btn-outline" id="orcamento-preview-enviar-email">Confirmar e Enviar por E-mail</button>
       <button type="button" class="btn btn-outline" id="orcamento-preview-cancelar">Voltar e editar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PERGUNTA: ORÇAMENTO OU IMPRIMIR -->
+<div class="modal-overlay no-print" id="modal-salvar-tipo">
+  <div class="modal-box" style="max-width:440px;">
+    <h3>Isso é um Orçamento ou você quer Imprimir agora?</h3>
+    <p style="color:var(--gray-700); margin-bottom:20px; font-size:0.9rem;">
+      Escolha <strong>Orçamento</strong> para salvar e enviar por e-mail para o cliente,
+      ou <strong>Imprimir</strong> para salvar e gerar as vias impressas do pedido.
+    </p>
+    <p id="salvar-tipo-error" class="error-message" style="display:none;"></p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" id="salvar-tipo-orcamento">Orçamento (enviar e-mail)</button>
+      <button type="button" class="btn btn-outline" id="salvar-tipo-imprimir">Imprimir (2 vias)</button>
+      <button type="button" class="btn btn-outline" id="salvar-tipo-cancelar">Cancelar</button>
     </div>
   </div>
 </div>

@@ -384,6 +384,9 @@ document.getElementById('forma_pagamento').addEventListener('change', function (
   var mostrarVista = deveMostrarDescontoVista();
   document.getElementById('desconto-vista-field').style.display = mostrarVista ? 'flex' : 'none';
   document.getElementById('valor-vista-field').style.display = mostrarVista ? 'flex' : 'none';
+  // O Pix fica sempre visível quando alguma forma de pagamento é escolhida — o cliente
+  // pode acabar pagando via Pix mesmo que o pedido tenha sido fechado em outra forma.
+  document.getElementById('pix-info-group').style.display = v ? 'grid' : 'none';
   atualizarValorVista();
 });
 
@@ -474,6 +477,7 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
     boleto_quantidade: formaPagamento === 'boleto' ? (toNumber(document.getElementById('boleto_quantidade').value) || null) : null,
     boleto_dias: formaPagamento === 'boleto' ? (toNumber(document.getElementById('boleto_dias').value) || null) : null,
     cartao_parcelas: formaPagamento === 'cartao_credito' ? (toNumber(document.getElementById('cartao_parcelas').value) || null) : null,
+    pix_dias: toNumber(document.getElementById('pix_dias').value) || null,
     valor_total_a_pagar: toNumber(document.getElementById('valor_total_a_pagar').value),
     desconto_percentual: deveMostrarDescontoVista() ? (toNumber(document.getElementById('desconto_percentual').value) || null) : null,
     valor_total_a_pagar_vista: deveMostrarDescontoVista() ? toNumber(document.getElementById('valor_total_a_pagar_vista').value) : null,
@@ -532,28 +536,115 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
   return { pedido: pedido };
 }
 
-document.getElementById('btn-salvar-pedido').addEventListener('click', async function () {
-  var errorEl = document.getElementById('pedido-error');
-  if (!validarPedido(errorEl)) return;
+/* ===================== SALVAR + IMPRIMIR / SALVAR + ENVIAR ORÇAMENTO (fluxos compartilhados) ===================== */
 
-  var btn = this;
+async function processarPedidoEImprimir(errorEl) {
   var estavaEditando = !!pedidoEmEdicaoId;
-  btn.disabled = true;
-  btn.textContent = 'Salvando...';
-
   var result = await salvarPedidoNoBanco('pedido', null);
-
-  btn.disabled = false;
-  btn.textContent = pedidoEmEdicaoId ? 'Salvar alterações' : 'Salvar pedido';
 
   if (result.error) {
     errorEl.textContent = 'Erro ao salvar pedido: ' + result.error.message;
     errorEl.style.display = 'block';
-    return;
+    return false;
   }
 
   showToast((estavaEditando ? 'Pedido nº ' + result.pedido.numero + ' atualizado com sucesso.' : 'Pedido nº ' + result.pedido.numero + ' salvo com sucesso.'), 'ok');
   atualizarAlertaOrcamentosPendentes();
+
+  document.getElementById('print-sheet').innerHTML = buildViaHtml('Cliente') + buildViaHtml('Empresa');
+  document.getElementById('orcamento-sheet').innerHTML = ''; // evita sobrepor com um orçamento gerado antes
+
+  var nomeCliente = selectedCliente.razao_social || selectedCliente.nome_fantasia || 'Pedido';
+  document.title = nomeCliente + ' - Portal HLN';
+  window.print();
+  return true;
+}
+
+async function processarOrcamentoEEnviarEmail(errorEl) {
+  var emailDestino = (selectedCliente.contato_email || selectedCliente.email_empresa || '').trim();
+  if (!emailDestino) {
+    errorEl.textContent = 'Este cliente não tem e-mail cadastrado (nem do contato, nem da empresa). Cadastre um e-mail antes de enviar.';
+    errorEl.style.display = 'block';
+    return false;
+  }
+
+  var estavaEditando = !!pedidoEmEdicaoId;
+  var result = await salvarPedidoNoBanco('orcamento', 'pendente');
+
+  if (result.error) {
+    errorEl.textContent = 'Erro ao salvar orçamento: ' + result.error.message;
+    errorEl.style.display = 'block';
+    return false;
+  }
+
+  var { data: { session } } = await supabaseClient.auth.getSession();
+
+  var resp;
+  try {
+    resp = await fetch('/api/enviar-orcamento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accessToken: session ? session.access_token : null,
+        to: emailDestino,
+        subject: 'Orçamento nº ' + result.pedido.numero + ' — HLN Embalagens e Equipamentos',
+        html: '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' + buildOrcamentoHtml() + '</body></html>'
+      })
+    });
+  } catch (err) {
+    resp = null;
+  }
+
+  var respData = resp ? await resp.json().catch(function () { return {}; }) : {};
+
+  if (!resp || !resp.ok) {
+    errorEl.textContent = 'Orçamento salvo, mas houve erro ao enviar o e-mail: ' + (respData.error || 'falha de conexão.');
+    errorEl.style.display = 'block';
+    return false;
+  }
+
+  showToast((estavaEditando ? 'Orçamento nº ' + result.pedido.numero + ' atualizado e enviado' : 'Orçamento nº ' + result.pedido.numero + ' salvo e enviado') + ' por e-mail para ' + emailDestino + '.', 'ok');
+  atualizarAlertaOrcamentosPendentes();
+  return true;
+}
+
+document.getElementById('btn-salvar-pedido').addEventListener('click', function () {
+  var errorEl = document.getElementById('pedido-error');
+  if (!validarPedido(errorEl)) return;
+  document.getElementById('salvar-tipo-error').style.display = 'none';
+  document.getElementById('modal-salvar-tipo').classList.add('open');
+});
+
+document.getElementById('salvar-tipo-cancelar').addEventListener('click', function () {
+  document.getElementById('modal-salvar-tipo').classList.remove('open');
+});
+
+document.getElementById('salvar-tipo-imprimir').addEventListener('click', async function () {
+  var btn = this;
+  var errorEl = document.getElementById('salvar-tipo-error');
+  errorEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  var ok = await processarPedidoEImprimir(errorEl);
+
+  btn.disabled = false;
+  btn.textContent = 'Imprimir (2 vias)';
+  if (ok) document.getElementById('modal-salvar-tipo').classList.remove('open');
+});
+
+document.getElementById('salvar-tipo-orcamento').addEventListener('click', async function () {
+  var btn = this;
+  var errorEl = document.getElementById('salvar-tipo-error');
+  errorEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  var ok = await processarOrcamentoEEnviarEmail(errorEl);
+
+  btn.disabled = false;
+  btn.textContent = 'Orçamento (enviar e-mail)';
+  if (ok) document.getElementById('modal-salvar-tipo').classList.remove('open');
 });
 
 /* ===================== FORMA DE PAGAMENTO (texto p/ impressão) ===================== */
@@ -583,8 +674,14 @@ function formatarFormaPagamento() {
 }
 
 function deveMostrarChavePix() {
-  var forma = document.getElementById('forma_pagamento').value;
-  return forma === 'a_vista' || forma === 'pix';
+  // O Pix aparece sempre que alguma forma de pagamento foi escolhida — o cliente
+  // pode acabar pagando via Pix mesmo que o pedido tenha sido fechado em outra forma.
+  return !!document.getElementById('forma_pagamento').value;
+}
+
+function obterPixDiasTexto() {
+  var dias = document.getElementById('pix_dias').value;
+  return dias ? dias + ' dias para pagamento' : '';
 }
 
 /* ===================== IMPRESSÃO (2 vias) ===================== */
@@ -634,7 +731,7 @@ function buildViaHtml(label) {
     '<p><strong>OBSERVAÇÃO:</strong> ' + (document.getElementById('observacao').value || '') + '</p>' +
     '<p><strong>FORMA DE PAGAMENTO:</strong> ' + formaPagamentoTexto + ' &nbsp; <strong>VALOR TOTAL A PAGAR:</strong> ' + formatBRL(document.getElementById('valor_total_a_pagar').value) + '</p>' +
     (deveMostrarDescontoVista() ? '<p><strong>TOTAL A PAGAR À VISTA:</strong> ' + formatBRL(document.getElementById('valor_total_a_pagar_vista').value) + '</p>' : '') +
-    (deveMostrarChavePix() ? '<p><strong>CHAVE PIX:</strong> 66878650000142</p>' : '') +
+    (deveMostrarChavePix() ? '<p><strong>CHAVE PIX:</strong> 66878650000142' + (obterPixDiasTexto() ? ' &nbsp; <strong>Pix:</strong> ' + obterPixDiasTexto() : '') + '</p>' : '') +
   '</div>';
 }
 
@@ -711,7 +808,7 @@ function buildOrcamentoHtml() {
       ' &nbsp; <strong>Forma de pagamento:</strong> ' + formaPagamentoTexto + '</p>' +
     '<p><strong>Valor total:</strong> ' + formatBRL(document.getElementById('valor_total_a_pagar').value) + '</p>' +
     (deveMostrarDescontoVista() ? '<p><strong>Total à vista:</strong> ' + formatBRL(document.getElementById('valor_total_a_pagar_vista').value) + '</p>' : '') +
-    (deveMostrarChavePix() ? '<p><strong>Chave PIX:</strong> 66878650000142</p>' : '') +
+    (deveMostrarChavePix() ? '<p><strong>Chave PIX:</strong> 66878650000142' + (obterPixDiasTexto() ? ' &nbsp; <strong>Pix:</strong> ' + obterPixDiasTexto() : '') + '</p>' : '') +
   '</div>';
 }
 
@@ -781,68 +878,15 @@ document.getElementById('orcamento-preview-confirmar').addEventListener('click',
 document.getElementById('orcamento-preview-enviar-email').addEventListener('click', async function () {
   var btn = this;
   var errorEl = document.getElementById('orcamento-preview-error');
-  var estavaEditando = !!pedidoEmEdicaoId;
   errorEl.style.display = 'none';
-
-  var emailDestino = (selectedCliente.contato_email || selectedCliente.email_empresa || '').trim();
-  if (!emailDestino) {
-    errorEl.textContent = 'Este cliente não tem e-mail cadastrado (nem do contato, nem da empresa). Cadastre um e-mail antes de enviar.';
-    errorEl.style.display = 'block';
-    return;
-  }
-
   btn.disabled = true;
-  btn.textContent = 'Salvando...';
+  btn.textContent = 'Enviando...';
 
-  var result = await salvarPedidoNoBanco('orcamento', 'pendente');
-
-  if (result.error) {
-    btn.disabled = false;
-    btn.textContent = 'Confirmar e Enviar por E-mail';
-    errorEl.textContent = 'Erro ao salvar orçamento: ' + result.error.message;
-    errorEl.style.display = 'block';
-    return;
-  }
-
-  btn.textContent = 'Enviando e-mail...';
-
-  var nomeCliente = selectedCliente.razao_social || selectedCliente.nome_fantasia || 'Cliente';
-  var { data: { session } } = await supabaseClient.auth.getSession();
-
-  var resp;
-  try {
-    resp = await fetch('/api/enviar-orcamento', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        accessToken: session ? session.access_token : null,
-        to: emailDestino,
-        subject: 'Orçamento nº ' + result.pedido.numero + ' — HLN Embalagens e Equipamentos',
-        // Wrap com doctype/meta charset — o HTML de buildOrcamentoHtml() é injetado
-        // direto no DOM da própria página pra impressão (que já declara UTF-8), mas
-        // pro e-mail precisa ir um documento completo, senão o cliente de e-mail
-        // (Gmail etc.) adivinha o charset errado e os acentos viram "�".
-        html: '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' + buildOrcamentoHtml() + '</body></html>'
-      })
-    });
-  } catch (err) {
-    resp = null;
-  }
-
-  var respData = resp ? await resp.json().catch(function () { return {}; }) : {};
+  var ok = await processarOrcamentoEEnviarEmail(errorEl);
 
   btn.disabled = false;
   btn.textContent = 'Confirmar e Enviar por E-mail';
-
-  if (!resp || !resp.ok) {
-    errorEl.textContent = 'Orçamento salvo, mas houve erro ao enviar o e-mail: ' + (respData.error || 'falha de conexão.');
-    errorEl.style.display = 'block';
-    return;
-  }
-
-  document.getElementById('modal-orcamento-preview').classList.remove('open');
-  showToast((estavaEditando ? 'Orçamento nº ' + result.pedido.numero + ' atualizado e enviado' : 'Orçamento nº ' + result.pedido.numero + ' salvo e enviado') + ' por e-mail para ' + emailDestino + '.', 'ok');
-  atualizarAlertaOrcamentosPendentes();
+  if (ok) document.getElementById('modal-orcamento-preview').classList.remove('open');
 });
 
 window.addEventListener('afterprint', function () {
@@ -908,6 +952,7 @@ async function iniciarEdicaoPedido(pedidoId) {
   document.getElementById('boleto_quantidade').value = pedido.boleto_quantidade || '';
   document.getElementById('boleto_dias').value = pedido.boleto_dias || '';
   document.getElementById('cartao_parcelas').value = pedido.cartao_parcelas || '';
+  document.getElementById('pix_dias').value = pedido.pix_dias || '';
 
   document.getElementById('valor_total_a_pagar').value = pedido.valor_total_a_pagar || 0;
   valorTotalManuallyEdited = true;
