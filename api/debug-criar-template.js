@@ -9,6 +9,16 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    if (req.query.list === '1') {
+      var listResp = await fetch(
+        'https://graph.facebook.com/v21.0/' + wabaId + '/message_templates?fields=name,status,category,language,components',
+        { headers: { Authorization: 'Bearer ' + token } }
+      );
+      var listData = await listResp.json();
+      res.status(200).json({ status: listResp.status, data: listData });
+      return;
+    }
+
     var resp = await fetch('https://graph.facebook.com/v21.0/' + wabaId + '/message_templates', {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
