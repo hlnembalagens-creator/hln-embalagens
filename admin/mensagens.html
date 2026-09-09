@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mensagens — Portal HLN</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="admin-brand">HLN Portal</div>
+  <nav class="admin-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="pedido.html">Pedido</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="catalogo.html" data-role-admin>Catálogo</a>
+    <a href="estoque.html">Estoque</a>
+    <a href="financeiro.html" data-role-admin>Financeiro</a>
+    <a href="calculadora-custo.html" data-role-admin>Calculadora de Custo</a>
+    <a href="mensagens.html" class="active">Mensagens</a>
+    <a href="usuarios.html" data-role-full-admin>Usuários</a>
+  </nav>
+  <div class="admin-user">
+    <span>Olá, <span data-user-name>—</span></span>
+    <a href="trocar-senha.html" style="color:#cfd9ea; font-size:0.85rem;">Trocar senha</a>
+    <button data-logout>Sair</button>
+  </div>
+</header>
+
+<main class="admin-main">
+  <h1 class="admin-title">Mensagens (WhatsApp)</h1>
+
+  <div class="admin-card" style="padding:0;">
+    <div class="mensagens-layout">
+      <div class="conversas-lista" id="conversas-lista">
+        <p style="padding:16px; color:var(--gray-400); font-size:0.88rem;">Carregando...</p>
+      </div>
+      <div class="conversa-detalhe" id="conversa-detalhe">
+        <div class="mensagens-vazio">Selecione uma conversa à esquerda.</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="js/admin-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/mensagens.js"></script>
+</body>
+</html>
