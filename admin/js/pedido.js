@@ -10,6 +10,14 @@ var valorTotalManuallyEdited = false;
 var valorVistaManuallyEdited = false;
 var pedidoEmEdicaoId = null;
 
+// Normaliza telefone de cliente (com ou sem DDI) pro formato que a API do WhatsApp espera.
+function telefoneParaWhatsapp(telefone) {
+  var digitos = String(telefone || '').replace(/\D/g, '');
+  if (!digitos) return null;
+  if (digitos.length <= 11) digitos = '55' + digitos;
+  return digitos;
+}
+
 function uid() {
   return 'i' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
@@ -603,7 +611,43 @@ async function processarOrcamentoEEnviarEmail(errorEl) {
     return false;
   }
 
-  showToast((estavaEditando ? 'Orçamento nº ' + result.pedido.numero + ' atualizado e enviado' : 'Orçamento nº ' + result.pedido.numero + ' salvo e enviado') + ' por e-mail para ' + emailDestino + '.', 'ok');
+  // Notificação por WhatsApp além do e-mail — best-effort: se o cliente não tem
+  // telefone, se o template ainda não foi aprovado pela Meta, ou se falhar por
+  // qualquer motivo, o orçamento já foi salvo e enviado por e-mail normalmente.
+  var enviadoWhatsapp = false;
+  var telefoneWhats = telefoneParaWhatsapp(selectedCliente.contato_telefone || selectedCliente.telefone_empresa);
+  if (telefoneWhats) {
+    var nomeCliente = selectedCliente.razao_social || selectedCliente.nome_fantasia || 'Cliente';
+    try {
+      var respWa = await fetch('/api/whatsapp-enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: session ? session.access_token : null,
+          to: telefoneWhats,
+          tipo: 'template',
+          templateName: 'orcamento_pronto',
+          templateLanguage: 'pt_BR',
+          templateComponents: [{
+            type: 'body',
+            parameters: [
+              { type: 'text', text: nomeCliente },
+              { type: 'text', text: String(result.pedido.numero) }
+            ]
+          }]
+        })
+      });
+      enviadoWhatsapp = respWa.ok;
+    } catch (err) {
+      enviadoWhatsapp = false;
+    }
+  }
+
+  showToast(
+    (estavaEditando ? 'Orçamento nº ' + result.pedido.numero + ' atualizado e enviado' : 'Orçamento nº ' + result.pedido.numero + ' salvo e enviado') +
+    ' por e-mail para ' + emailDestino + (enviadoWhatsapp ? ' e por WhatsApp.' : '.'),
+    'ok'
+  );
   atualizarAlertaOrcamentosPendentes();
   return true;
 }
