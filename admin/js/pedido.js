@@ -136,8 +136,8 @@ function renderVacuoRow(item) {
 
   row.innerHTML =
     '<div class="form-field"><label class="item-row-label">Material</label><input type="text" data-f="material" placeholder="Ex: NYLON POLI" value="' + (item.material || '') + '"></div>' +
-    '<div class="form-field"><label class="item-row-label">Larg. (m)</label><input type="text" inputmode="decimal" data-f="largura_m" placeholder="Ex: 0,20" value="' + item.largura_m + '"></div>' +
-    '<div class="form-field"><label class="item-row-label">Comp. (m)</label><input type="text" inputmode="decimal" data-f="comprimento_m" placeholder="Ex: 0,22" value="' + item.comprimento_m + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Larg. (cm)</label><input type="text" inputmode="decimal" data-f="largura_m" placeholder="Ex: 20" value="' + (item.largura_m ? formatMedidaCm(item.largura_m) : '') + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Comp. (cm)</label><input type="text" inputmode="decimal" data-f="comprimento_m" placeholder="Ex: 22" value="' + (item.comprimento_m ? formatMedidaCm(item.comprimento_m) : '') + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Esp. (µ)</label><input type="text" inputmode="decimal" data-f="espessura_micras" placeholder="Ex: 120" value="' + item.espessura_micras + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Tipo</label><input type="text" data-f="tipo" placeholder="Ex: NATURAL" value="' + (item.tipo || '') + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Qtd.</label><input type="text" inputmode="decimal" data-f="quantidade" value="' + item.quantidade + '"></div>' +
@@ -146,11 +146,18 @@ function renderVacuoRow(item) {
     '<div class="form-field"><label class="item-row-label">Vl. Total</label><span class="calc-readout" data-out="vl_total">R$ 0,00</span></div>' +
     '<button type="button" class="item-remove" title="Remover item">✕</button>';
 
+  // Largura e comprimento são digitados em cm (ex: 20) mas guardados internamente em
+  // metros — é a unidade que a fórmula de peso (calcVacuo) e o "Fator" já usam.
+  var VACUO_CAMPOS_EM_CM = ['largura_m', 'comprimento_m'];
   var VACUO_CAMPOS_NUMERICOS = ['largura_m', 'comprimento_m', 'espessura_micras', 'quantidade', 'taxa_preco_peso'];
   row.querySelectorAll('[data-f]').forEach(function (input) {
     input.addEventListener('input', function () {
       var field = input.dataset.f;
-      item[field] = (VACUO_CAMPOS_NUMERICOS.indexOf(field) !== -1) ? toNumber(input.value) : input.value;
+      if (VACUO_CAMPOS_EM_CM.indexOf(field) !== -1) {
+        item[field] = toNumber(input.value) / 100;
+      } else {
+        item[field] = (VACUO_CAMPOS_NUMERICOS.indexOf(field) !== -1) ? toNumber(input.value) : input.value;
+      }
       updateVacuoRowReadout(row, item);
       updateTotals();
     });
@@ -568,6 +575,21 @@ async function processarPedidoEImprimir(errorEl) {
   return true;
 }
 
+async function processarPedidoSoSalvar(errorEl) {
+  var estavaEditando = !!pedidoEmEdicaoId;
+  var result = await salvarPedidoNoBanco('pedido', null);
+
+  if (result.error) {
+    errorEl.textContent = 'Erro ao salvar pedido: ' + result.error.message;
+    errorEl.style.display = 'block';
+    return false;
+  }
+
+  showToast((estavaEditando ? 'Pedido nº ' + result.pedido.numero + ' atualizado.' : 'Pedido nº ' + result.pedido.numero + ' salvo como pendente — envie ou imprima quando quiser.'), 'ok');
+  atualizarAlertaOrcamentosPendentes();
+  return true;
+}
+
 async function processarOrcamentoEEnviarEmail(errorEl) {
   var emailDestino = (selectedCliente.contato_email || selectedCliente.email_empresa || '').trim();
   if (!emailDestino) {
@@ -674,6 +696,20 @@ document.getElementById('salvar-tipo-imprimir').addEventListener('click', async 
 
   btn.disabled = false;
   btn.textContent = 'Imprimir (2 vias)';
+  if (ok) document.getElementById('modal-salvar-tipo').classList.remove('open');
+});
+
+document.getElementById('salvar-tipo-so-salvar').addEventListener('click', async function () {
+  var btn = this;
+  var errorEl = document.getElementById('salvar-tipo-error');
+  errorEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  var ok = await processarPedidoSoSalvar(errorEl);
+
+  btn.disabled = false;
+  btn.textContent = 'Só salvar (pendente)';
   if (ok) document.getElementById('modal-salvar-tipo').classList.remove('open');
 });
 
