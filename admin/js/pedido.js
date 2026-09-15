@@ -548,6 +548,15 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
   await sincronizarFinanceiroDoPedido(pedido, nomeClienteFinanceiro, !!selectedCliente.eh_fornecedor);
 
   pedidoEmEdicaoId = pedido.id;
+  pedidoEmEdicaoTipo = pedido.tipo;
+  pedidoEmEdicaoPago = !!pedido.pago;
+  pedidoEmEdicaoDataPagamento = pedido.data_pagamento || null;
+  if (pedido.tipo === 'pedido') {
+    document.getElementById('edicao-banner-texto').textContent = '✏️ Editando Pedido nº ' + pedido.numero;
+    document.getElementById('edicao-banner').style.display = 'flex';
+  }
+  renderPedidoPagoStatus();
+
   return { pedido: pedido };
 }
 
@@ -1043,15 +1052,69 @@ async function iniciarEdicaoPedido(pedidoId) {
   updateTotals();
 
   pedidoEmEdicaoId = pedido.id;
+  pedidoEmEdicaoTipo = pedido.tipo;
+  pedidoEmEdicaoPago = !!pedido.pago;
+  pedidoEmEdicaoDataPagamento = pedido.data_pagamento || null;
   var tipoLabel = pedido.tipo === 'orcamento' ? 'Orçamento' : 'Pedido';
   document.getElementById('pagina-titulo').textContent = 'Editando ' + tipoLabel + ' nº ' + pedido.numero;
   document.getElementById('edicao-banner-texto').textContent = '✏️ Editando ' + tipoLabel + ' nº ' + pedido.numero;
-  document.getElementById('edicao-banner').style.display = 'block';
+  document.getElementById('edicao-banner').style.display = 'flex';
   document.getElementById('btn-salvar-pedido').textContent = 'Salvar alterações';
+  renderPedidoPagoStatus();
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 window.iniciarEdicaoPedido = iniciarEdicaoPedido;
+
+/* ===================== STATUS DE PAGAMENTO (só pra pedido já salvo, tipo "pedido") ===================== */
+
+var pedidoEmEdicaoTipo = null;
+var pedidoEmEdicaoPago = false;
+var pedidoEmEdicaoDataPagamento = null;
+
+function renderPedidoPagoStatus() {
+  var el = document.getElementById('pedido-pago-status');
+  if (!pedidoEmEdicaoId || pedidoEmEdicaoTipo !== 'pedido') {
+    el.style.display = 'none';
+    el.innerHTML = '';
+    return;
+  }
+
+  el.style.display = 'inline-flex';
+  el.innerHTML = pedidoEmEdicaoPago
+    ? '<span class="badge badge-ok">Pago' + (pedidoEmEdicaoDataPagamento ? ' em ' + new Date(pedidoEmEdicaoDataPagamento + 'T00:00:00').toLocaleDateString('pt-BR') : '') + '</span>' +
+      '<button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem;" id="btn-marcar-pendente">Marcar como pendente</button>'
+    : '<span class="badge badge-warning">Pendente de pagamento</span>' +
+      '<button type="button" class="btn btn-primary" style="padding:4px 10px; font-size:0.78rem;" id="btn-marcar-pago">Pago</button>';
+
+  var btnPago = document.getElementById('btn-marcar-pago');
+  if (btnPago) {
+    btnPago.addEventListener('click', async function () {
+      btnPago.disabled = true;
+      var result = await marcarPedidoPago(pedidoEmEdicaoId, true);
+      btnPago.disabled = false;
+      if (result.error) { showToast('Erro ao marcar como pago: ' + result.error.message, 'error'); return; }
+      pedidoEmEdicaoPago = true;
+      pedidoEmEdicaoDataPagamento = result.dataPagamento;
+      renderPedidoPagoStatus();
+      showToast('Pedido marcado como pago.', 'ok');
+    });
+  }
+
+  var btnPendente = document.getElementById('btn-marcar-pendente');
+  if (btnPendente) {
+    btnPendente.addEventListener('click', async function () {
+      btnPendente.disabled = true;
+      var result = await marcarPedidoPago(pedidoEmEdicaoId, false);
+      btnPendente.disabled = false;
+      if (result.error) { showToast('Erro: ' + result.error.message, 'error'); return; }
+      pedidoEmEdicaoPago = false;
+      pedidoEmEdicaoDataPagamento = null;
+      renderPedidoPagoStatus();
+      showToast('Pedido marcado como pendente de pagamento.', 'ok');
+    });
+  }
+}
 
 /* ===================== INIT ===================== */
 

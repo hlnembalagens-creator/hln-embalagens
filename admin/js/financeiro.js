@@ -11,11 +11,17 @@ function formatDataFin(d) {
 
 /* ===================== ENTRADAS ===================== */
 
+function statusPagamentoBadge(e) {
+  return e.pago
+    ? '<span class="badge badge-ok">Pago' + (e.data_pagamento ? ' em ' + formatDataFin(e.data_pagamento) : '') + '</span>'
+    : '<span class="badge badge-warning">Pendente</span>';
+}
+
 async function loadEntradasRecentes() {
   var { data, error } = await supabaseClient.from('financeiro_entradas').select('*').order('data', { ascending: false }).limit(50);
   var tbody = document.getElementById('entradas-tbody');
-  if (error) { tbody.innerHTML = '<tr><td colspan="5">Erro: ' + error.message + '</td></tr>'; return; }
-  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="5">Nenhuma entrada cadastrada ainda.</td></tr>'; return; }
+  if (error) { tbody.innerHTML = '<tr><td colspan="6">Erro: ' + error.message + '</td></tr>'; return; }
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="6">Nenhuma entrada cadastrada ainda.</td></tr>'; return; }
 
   tbody.innerHTML = data.map(function (e) {
     return '<tr>' +
@@ -23,6 +29,7 @@ async function loadEntradasRecentes() {
       '<td>' + (e.cliente_nome || '—') + '</td>' +
       '<td>' + (e.produto || '—') + '</td>' +
       '<td>' + formatBRLFin(e.valor) + '</td>' +
+      '<td>' + statusPagamentoBadge(e) + '</td>' +
       '<td class="row-actions"><button data-del-entrada="' + e.id + '" class="danger">Excluir</button></td>' +
     '</tr>';
   }).join('');
@@ -209,9 +216,9 @@ async function gerarRelatorio() {
   var entradasTbody = document.getElementById('relatorio-entradas-tbody');
   entradasTbody.innerHTML = entradas.length
     ? entradas.map(function (e) {
-        return '<tr><td>' + formatDataFin(e.data) + '</td><td>' + (e.cliente_nome || '—') + '</td><td>' + (e.produto || '—') + '</td><td>' + formatBRLFin(e.valor) + '</td></tr>';
+        return '<tr><td>' + formatDataFin(e.data) + '</td><td>' + (e.cliente_nome || '—') + '</td><td>' + (e.produto || '—') + '</td><td>' + formatBRLFin(e.valor) + '</td><td>' + statusPagamentoBadge(e) + '</td></tr>';
       }).join('')
-    : '<tr><td colspan="4">Nenhuma entrada nesse período.</td></tr>';
+    : '<tr><td colspan="5">Nenhuma entrada nesse período.</td></tr>';
 
   var saidasTbody = document.getElementById('relatorio-saidas-tbody');
   saidasTbody.innerHTML = saidas.length

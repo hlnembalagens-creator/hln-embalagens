@@ -74,6 +74,9 @@ async function sincronizarFinanceiroDoPedido(pedido, clienteNome, ehFornecedor) 
     parcelas.push({ data: hoje.toISOString().slice(0, 10), valor: valorBase, rotulo: produtoLabel });
   }
 
+  var pagoAtual = !!pedido.pago;
+  var dataPagamentoAtual = pedido.pago ? (pedido.data_pagamento || hoje.toISOString().slice(0, 10)) : null;
+
   if (ehFornecedor) {
     var saidas = parcelas.map(function (p) {
       return {
@@ -96,12 +99,25 @@ async function sincronizarFinanceiroDoPedido(pedido, clienteNome, ehFornecedor) 
         valor: p.valor,
         observacao: 'Gerado automaticamente a partir do pedido.',
         pedido_id: pedido.id,
+        pago: pagoAtual,
+        data_pagamento: dataPagamentoAtual,
         created_by: currentUserId
       };
     });
     if (entradas.length) await supabaseClient.from('financeiro_entradas').insert(entradas);
   }
 }
+
+// Marca (ou desmarca) um pedido como pago — atualiza o pedido e reflete direto
+// nas entradas do Financeiro já geradas pra ele, sem precisar refazer tudo.
+async function marcarPedidoPago(pedidoId, pago) {
+  var dataPagamento = pago ? new Date().toISOString().slice(0, 10) : null;
+  var { error } = await supabaseClient.from('pedidos').update({ pago: pago, data_pagamento: dataPagamento }).eq('id', pedidoId);
+  if (error) return { error: error };
+  await supabaseClient.from('financeiro_entradas').update({ pago: pago, data_pagamento: dataPagamento }).eq('pedido_id', pedidoId);
+  return { ok: true, dataPagamento: dataPagamento };
+}
+window.marcarPedidoPago = marcarPedidoPago;
 
 async function contarOrcamentosPendentes(clienteId) {
   var { count, error } = await supabaseClient
@@ -159,6 +175,16 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
     } else {
       tipoLabel = 'Pedido nº ' + pedido.numero;
       badgeClass = 'badge-ok'; badgeText = 'Pedido';
+      acoesEspecificas = pedido.pago
+        ? '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" data-marcar-pendente="' + pedido.id + '">Marcar como pendente</button>'
+        : '<button type="button" class="btn btn-primary" style="padding:6px 12px; font-size:0.78rem;" data-marcar-pago="' + pedido.id + '">Pago</button>';
+    }
+
+    var pagoBadge = '';
+    if (pedido.tipo === 'pedido') {
+      pagoBadge = pedido.pago
+        ? '<span class="badge badge-ok">Pago' + (pedido.data_pagamento ? ' em ' + new Date(pedido.data_pagamento + 'T00:00:00').toLocaleDateString('pt-BR') : '') + '</span>'
+        : '<span class="badge badge-warning">Pendente de pagamento</span>';
     }
 
     var acoes = '<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">' +
@@ -167,7 +193,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
     '</div>';
 
     return '<div style="border-bottom:1px solid var(--off-white); padding:14px 0;">' +
-      '<strong>' + tipoLabel + '</strong> <span class="badge ' + badgeClass + '">' + badgeText + '</span> — ' + dataStr +
+      '<strong>' + tipoLabel + '</strong> <span class="badge ' + badgeClass + '">' + badgeText + '</span> ' + pagoBadge + ' — ' + dataStr +
       ' &nbsp; <span style="color:var(--gray-400);">' + formatarFormaPagamentoHistorico(pedido) + '</span>' +
       '<ul style="margin:8px 0 8px 20px; font-size:0.88rem;">' + itensVacuo + itensGerais + '</ul>' +
       '<strong>Valor total a pagar: ' + formatBRLHistorico(pedido.valor_total_a_pagar) + '</strong>' +
@@ -204,6 +230,25 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
         await sincronizarFinanceiroDoPedido(pedidoConvertido, nomeCliente, !!(clienteInfo && clienteInfo.eh_fornecedor));
       }
 
+      loadHistoricoCliente(clienteId, containerId, onAtualizado);
+      if (typeof onAtualizado === 'function') onAtualizado();
+    });
+  });
+
+  conteudo.querySelectorAll('[data-marcar-pago]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var result = await marcarPedidoPago(btn.dataset.marcarPago, true);
+      if (result.error) { alert('Erro ao marcar como pago: ' + result.error.message); return; }
+      loadHistoricoCliente(clienteId, containerId, onAtualizado);
+      if (typeof onAtualizado === 'function') onAtualizado();
+    });
+  });
+
+  conteudo.querySelectorAll('[data-marcar-pendente]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      if (!confirm('Marcar este pedido como pendente de pagamento de novo?')) return;
+      var result = await marcarPedidoPago(btn.dataset.marcarPendente, false);
+      if (result.error) { alert('Erro: ' + result.error.message); return; }
       loadHistoricoCliente(clienteId, containerId, onAtualizado);
       if (typeof onAtualizado === 'function') onAtualizado();
     });
