@@ -149,6 +149,14 @@ document.getElementById('filtro-tipo').addEventListener('change', aplicarFiltros
 var filtroVendedorEl = document.getElementById('filtro-vendedor');
 if (filtroVendedorEl) filtroVendedorEl.addEventListener('change', aplicarFiltrosERenderizar);
 
+document.getElementById('btn-ver-todos').addEventListener('click', function () {
+  document.getElementById('filtro-busca').value = '';
+  document.getElementById('filtro-tipo').value = '';
+  document.getElementById('filtro-status').value = '';
+  if (filtroVendedorEl) filtroVendedorEl.value = '';
+  aplicarFiltrosERenderizar();
+});
+
 /* ===================== INIT ===================== */
 
 (async function () {
