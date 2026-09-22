@@ -29,8 +29,10 @@ var campoPrecoTotal = document.getElementById('cc-preco-total');
 var ultimoCampoEditado = null;
 
 function calcularPeso() {
-  var largura = toNumberCusto(document.getElementById('cc-largura').value);
-  var comprimento = toNumberCusto(document.getElementById('cc-comprimento').value);
+  // Largura e comprimento são digitados em cm (ex: 20) — a fórmula de peso usa
+  // metros, então converte aqui, do mesmo jeito que a tela de Pedido já faz.
+  var largura = toNumberCusto(document.getElementById('cc-largura').value) / 100;
+  var comprimento = toNumberCusto(document.getElementById('cc-comprimento').value) / 100;
   var espessura = toNumberCusto(document.getElementById('cc-espessura').value);
   var quantidade = toNumberCusto(document.getElementById('cc-quantidade').value);
 
