@@ -168,11 +168,12 @@
       </div>
       <div class="form-field">
         <label for="valor_total_a_pagar">Valor Total a Pagar (R$)</label>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <input type="text" inputmode="decimal" id="valor_total_a_pagar" style="flex:1;">
-          <button type="button" class="btn btn-outline" id="btn-recalcular-total" style="padding:8px 12px; font-size:0.8rem; white-space:nowrap;" title="Recalcula a partir dos itens do pedido">↻ Recalcular</button>
-        </div>
-        <span class="hint">Preenchido automaticamente, editável. Se ficar "preso" num valor antigo depois de mudar quantidade, clique em Recalcular.</span>
+        <input type="text" inputmode="decimal" id="valor_total_a_pagar">
+        <span class="hint">Preenchido automaticamente, editável.</span>
+      </div>
+      <div class="form-field" style="justify-content:flex-end;">
+        <label>&nbsp;</label>
+        <button type="button" class="btn btn-outline" id="btn-recalcular-total" title="Recalcula o Valor Total a Pagar a partir dos itens do pedido">↻ Recalcular valor</button>
       </div>
       <div class="form-field" id="desconto-vista-field" style="display:none;">
         <label for="desconto_percentual">Desconto à Vista/Pix (%)</label>
