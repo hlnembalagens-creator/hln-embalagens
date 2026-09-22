@@ -232,6 +232,8 @@ async function gerarRelatorio() {
 
 /* ===================== COMISSÃO DE VENDEDORES ===================== */
 
+var ROLES_VENDEDOR_FIN = ['vendedor', 'vendedor_ext', 'vendedor_int'];
+
 async function gerarComissao(periodo) {
   var tbody = document.getElementById('comissao-tbody');
 
@@ -239,7 +241,7 @@ async function gerarComissao(periodo) {
     .from('pedidos')
     // pedidos tem duas relações com profiles (created_by e vendedor_id) — precisa
     // dizer qual usar, senão o PostgREST recusa o embed por ambiguidade.
-    .select('vendedor_id, valor_total_a_pagar, profiles!vendedor_id(nome_exibicao, comissao_percentual)')
+    .select('vendedor_id, valor_total_a_pagar, profiles!vendedor_id(nome_exibicao, comissao_percentual, role)')
     .eq('tipo', 'pedido')
     .gte('created_at', periodo.inicio)
     .lt('created_at', periodo.fim);
@@ -252,6 +254,9 @@ async function gerarComissao(periodo) {
   var porVendedor = {};
   (data || []).forEach(function (p) {
     if (!p.vendedor_id || !p.profiles) return;
+    // Sócios (admin/ADM1) às vezes ficam como vendedor_id em pedidos antigos —
+    // essa tabela é só pra comissão de vendedor de verdade (Paulo etc).
+    if (ROLES_VENDEDOR_FIN.indexOf(p.profiles.role) === -1) return;
     if (!porVendedor[p.vendedor_id]) {
       porVendedor[p.vendedor_id] = {
         nome: p.profiles.nome_exibicao, percentual: parseFloat(p.profiles.comissao_percentual) || 0,
