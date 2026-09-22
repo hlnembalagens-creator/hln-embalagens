@@ -17,6 +17,7 @@
   <nav class="admin-nav">
     <a href="dashboard.html">Dashboard</a>
     <a href="pedido.html" class="active">Pedido</a>
+    <a href="vendas.html">Vendas</a>
     <a href="clientes.html">Clientes</a>
     <a href="catalogo.html" data-role-admin>Catálogo</a>
     <a href="estoque.html">Estoque</a>
@@ -84,6 +85,15 @@
   <!-- CONDIÇÕES / PAGAMENTO -->
   <div class="admin-card">
     <h2>Condições e Pagamento</h2>
+    <div class="form-grid" style="margin-bottom:20px;" data-role-admin>
+      <div class="form-field span-2">
+        <label for="vendedor_responsavel">Vendedor responsável por essa venda</label>
+        <select id="vendedor_responsavel">
+          <option value="">— Eu mesmo —</option>
+        </select>
+        <span class="hint">Preenche a comissão desse vendedor no Financeiro, mesmo que outra pessoa esteja lançando o pedido.</span>
+      </div>
+    </div>
     <div class="form-grid" style="margin-bottom:20px;">
       <div class="form-field">
         <label for="prazo_entrega">Prazo de Entrega</label>

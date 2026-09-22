@@ -47,6 +47,31 @@ function calcVacuo(item) {
   return { peso: peso, peso_total: pesoTotal, vl_unitario: vlUnitario, vl_total: vlTotal };
 }
 
+/* ===================== VENDEDOR RESPONSÁVEL ===================== */
+// Normalmente o pedido fica em nome de quem salvou, mas um admin pode lançar
+// a venda em nome de outro vendedor (o seletor só aparece pra admin/ADM1).
+
+var vendedoresCache = [];
+
+async function loadVendedoresSelect() {
+  var select = document.getElementById('vendedor_responsavel');
+  if (!select) return;
+
+  var { data, error } = await supabaseClient.from('profiles').select('id, nome_exibicao, role').order('nome_exibicao');
+  if (error) return;
+  vendedoresCache = data || [];
+
+  select.innerHTML = '<option value="">— Eu mesmo —</option>' + vendedoresCache
+    .filter(function (p) { return p.id !== currentUserId; })
+    .map(function (p) { return '<option value="' + p.id + '">' + p.nome_exibicao + '</option>'; })
+    .join('');
+}
+
+function obterVendedorResponsavelId() {
+  var select = document.getElementById('vendedor_responsavel');
+  return (select && select.value) ? select.value : currentUserId;
+}
+
 /* ===================== CLIENTE ===================== */
 
 async function loadClientesSelect() {
@@ -208,12 +233,25 @@ function renderGeraisItems() {
       '<div><strong>' + g.nome_produto + '</strong><br>' + badge + '</div>' +
       '<div>Cód: ' + (g.codigo_produto || '—') + '</div>' +
       '<div>NCM: ' + (g.ncm || '—') + '</div>' +
-      '<div>Unit.: ' + formatBRL(g.preco_unitario) + '</div>' +
-      '<div>Qtd: ' + g.quantidade + '</div>' +
-      '<div>Total: ' + formatBRL(precoTotal) + '</div>' +
+      '<div><label class="item-row-label">Unit. (R$)</label><input type="text" inputmode="decimal" class="gerais-input" data-f="preco_unitario" value="' + g.preco_unitario + '"></div>' +
+      '<div><label class="item-row-label">Qtd.</label><input type="text" inputmode="decimal" class="gerais-input" data-f="quantidade" value="' + g.quantidade + '"></div>' +
+      '<div><label class="item-row-label">Total</label><span class="calc-readout" data-out="preco_total">' + formatBRL(precoTotal) + '</span></div>' +
       '<button type="button" class="item-remove" title="Remover item">✕</button>' +
     '</div>';
   }).join('');
+
+  container.querySelectorAll('.items-gerais-row').forEach(function (row) {
+    var id = row.dataset.id;
+    var g = geraisItems.find(function (item) { return item._id === id; });
+    if (!g) return;
+    row.querySelectorAll('[data-f]').forEach(function (input) {
+      input.addEventListener('input', function () {
+        g[input.dataset.f] = toNumber(input.value);
+        row.querySelector('[data-out="preco_total"]').textContent = formatBRL(g.preco_unitario * g.quantidade);
+        updateTotals();
+      });
+    });
+  });
 
   container.querySelectorAll('.item-remove').forEach(function (btn) {
     btn.addEventListener('click', function () {
@@ -497,9 +535,10 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
     desconto_percentual: deveMostrarDescontoVista() ? (toNumber(document.getElementById('desconto_percentual').value) || null) : null,
     valor_total_a_pagar_vista: deveMostrarDescontoVista() ? toNumber(document.getElementById('valor_total_a_pagar_vista').value) : null,
     created_by: currentUserId,
-    // Sempre reflete quem salvou por último — é essa pessoa que fica responsável
-    // pela venda (e pela comissão) na apuração do Financeiro.
-    vendedor_id: currentUserId
+    // Normalmente é quem salvou, mas um admin pode lançar o pedido em nome de
+    // outro vendedor (ex: Paulo) pelo seletor "Vendedor responsável" — assim a
+    // comissão no Financeiro vai pra pessoa certa mesmo que outra tenha digitado.
+    vendedor_id: obterVendedorResponsavelId()
   };
 
   var pedido, pedidoError;
@@ -1006,6 +1045,9 @@ async function iniciarEdicaoPedido(pedidoId) {
   document.getElementById('select-cliente').value = pedido.cliente_id || '';
   document.getElementById('select-cliente').dispatchEvent(new Event('change', { bubbles: true }));
 
+  var vendedorSelect = document.getElementById('vendedor_responsavel');
+  if (vendedorSelect) vendedorSelect.value = (pedido.vendedor_id && pedido.vendedor_id !== currentUserId) ? pedido.vendedor_id : '';
+
   (pedido.pedido_itens_vacuo || []).slice().sort(function (a, b) { return a.ordem - b.ordem; }).forEach(function (i) {
     var item = {
       _id: uid(), item: i.item, material: i.material, largura_m: parseFloat(i.largura_m) || 0,
@@ -1043,11 +1085,21 @@ async function iniciarEdicaoPedido(pedidoId) {
   document.getElementById('cartao_parcelas').value = pedido.cartao_parcelas || '';
   document.getElementById('pix_dias').value = pedido.pix_dias || '';
 
+  // Só trava o recálculo automático se o valor salvo já era diferente da soma
+  // dos itens (ou seja, alguém ajustou manualmente antes) — assim, corrigir uma
+  // quantidade durante a edição continua atualizando o "Valor Total a Pagar"
+  // sozinho, em vez de ficar travado no valor antigo salvo.
+  var somaItensAtual = vacuoItems.reduce(function (acc, item) { return acc + calcVacuo(item).vl_total; }, 0) +
+    geraisItems.reduce(function (acc, g) { return acc + g.preco_unitario * g.quantidade; }, 0);
+  var valorSalvo = parseFloat(pedido.valor_total_a_pagar) || 0;
+  valorTotalManuallyEdited = Math.abs(somaItensAtual - valorSalvo) > 0.01;
   document.getElementById('valor_total_a_pagar').value = pedido.valor_total_a_pagar || 0;
-  valorTotalManuallyEdited = true;
+
   document.getElementById('desconto_percentual').value = pedido.desconto_percentual || '';
+  var valorVistaEsperado = valorSalvo * (1 - (parseFloat(pedido.desconto_percentual) || 0) / 100);
+  var valorVistaSalvo = parseFloat(pedido.valor_total_a_pagar_vista) || 0;
+  valorVistaManuallyEdited = Math.abs(valorVistaEsperado - valorVistaSalvo) > 0.01;
   document.getElementById('valor_total_a_pagar_vista').value = pedido.valor_total_a_pagar_vista || 0;
-  valorVistaManuallyEdited = true;
 
   updateTotals();
 
@@ -1124,6 +1176,7 @@ function renderPedidoPagoStatus() {
   currentUserId = auth.session.user.id;
   currentUserRole = auth.profile.role;
   await loadClientesSelect();
+  await loadVendedoresSelect();
   renderGeraisItems();
   updateTotals();
 

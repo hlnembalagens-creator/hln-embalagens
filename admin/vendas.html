@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard — Portal HLN</title>
+<title>Vendas — Portal HLN</title>
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
@@ -15,9 +15,9 @@
 <header class="admin-header">
   <div class="admin-brand">HLN Portal</div>
   <nav class="admin-nav">
-    <a href="dashboard.html" class="active">Dashboard</a>
+    <a href="dashboard.html">Dashboard</a>
     <a href="pedido.html">Pedido</a>
-    <a href="vendas.html">Vendas</a>
+    <a href="vendas.html" class="active">Vendas</a>
     <a href="clientes.html">Clientes</a>
     <a href="catalogo.html" data-role-admin>Catálogo</a>
     <a href="estoque.html">Estoque</a>
@@ -34,42 +34,56 @@
 </header>
 
 <main class="admin-main">
-  <h1 class="admin-title">Dashboard</h1>
+  <h1 class="admin-title">Vendas</h1>
 
-  <div class="dashboard-grid dashboard-grid-2" style="margin-bottom:20px;">
-    <div class="admin-card">
-      <div class="dashboard-card-title">Top 5 clientes</div>
-      <div class="dashboard-card-hint">Por valor total comprado (pedidos confirmados). O sinal ao lado mostra há quanto tempo veio a última compra.</div>
-      <div id="top-clientes" class="ranking-list"><p class="dashboard-empty">Carregando...</p></div>
-    </div>
-
-    <div class="admin-card">
-      <div class="dashboard-card-title">Produtos mais vendidos</div>
-      <div class="dashboard-card-hint">Por quantidade vendida (sem valores).</div>
-      <div id="top-produtos" class="ranking-list"><p class="dashboard-empty">Carregando...</p></div>
+  <div class="admin-card">
+    <div class="form-grid" style="margin-bottom:0;">
+      <div class="form-field span-2">
+        <label for="filtro-busca">Buscar por cliente ou número</label>
+        <input type="text" id="filtro-busca" placeholder="Ex: Ra-Chu, 23...">
+      </div>
+      <div class="form-field">
+        <label for="filtro-tipo">Tipo</label>
+        <select id="filtro-tipo">
+          <option value="">Todos</option>
+          <option value="pedido">Pedido</option>
+          <option value="orcamento">Orçamento</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="filtro-status">Pagamento</label>
+        <select id="filtro-status">
+          <option value="">Todos</option>
+          <option value="pago">Pago</option>
+          <option value="pendente">Pendente</option>
+        </select>
+      </div>
+      <div class="form-field" data-role-admin>
+        <label for="filtro-vendedor">Vendedor</label>
+        <select id="filtro-vendedor">
+          <option value="">Todos</option>
+        </select>
+      </div>
     </div>
   </div>
 
   <div class="admin-card">
-    <div class="dashboard-card-title">Mapa de calor — localidade dos clientes que mais compram</div>
-    <div class="dashboard-card-hint">Quanto mais forte a cor, maior o volume de compras vindo daquela cidade.</div>
-    <div id="heatmap-uf" class="heatmap-grid"><p class="dashboard-empty">Carregando...</p></div>
-  </div>
-
-  <div class="admin-card">
-    <div class="dashboard-card-title">Recência de compra por cliente</div>
-    <div class="dashboard-card-hint">
-      <span class="semaforo-dot semaforo-verde"></span> comprou nos últimos 30 dias &nbsp;
-      <span class="semaforo-dot semaforo-amarelo"></span> entre 31 e 60 dias &nbsp;
-      <span class="semaforo-dot semaforo-vermelho"></span> mais de 60 dias sem comprar
-    </div>
     <div class="table-scroll">
       <table class="admin-table">
         <thead>
-          <tr><th></th><th>Cliente</th><th>Localidade</th><th>Última compra</th><th>Há quantos dias</th></tr>
+          <tr>
+            <th>Nº</th>
+            <th>Cliente</th>
+            <th>Data</th>
+            <th>Pagamento</th>
+            <th>Valor</th>
+            <th data-role-admin>Vendedor</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
         </thead>
-        <tbody id="semaforo-tbody">
-          <tr><td colspan="5">Carregando...</td></tr>
+        <tbody id="vendas-tbody">
+          <tr><td colspan="8">Carregando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -83,6 +97,7 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
-<script src="js/dashboard.js"></script>
+<script src="js/historico.js"></script>
+<script src="js/vendas.js"></script>
 </body>
 </html>
