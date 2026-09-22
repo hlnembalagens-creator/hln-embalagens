@@ -105,6 +105,10 @@ function renderTabelaVendas(lista) {
         : '<button type="button" class="btn btn-primary" style="padding:4px 10px; font-size:0.78rem;" data-marcar-pago="' + p.id + '">Pago</button>';
     }
 
+    var botaoExcluir = currentUserRole !== 'admin1'
+      ? '<button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem; color:#a92323; border-color:#a92323;" data-excluir="' + p.id + '" data-label="' + tipoLabel + '">Excluir</button>'
+      : '';
+
     return '<tr>' +
       '<td>' + tipoLabel + '</td>' +
       '<td>' + clienteNome + '</td>' +
@@ -113,7 +117,7 @@ function renderTabelaVendas(lista) {
       '<td>' + formatBRLVendas(p.valor_total_a_pagar) + '</td>' +
       '<td data-role-admin>' + vendedorNome + '</td>' +
       '<td>' + statusBadge + '</td>' +
-      '<td class="row-actions"><a href="pedido.html?editar=' + p.id + '">Editar</a>' + (acaoPago ? ' ' + acaoPago : '') + '</td>' +
+      '<td class="row-actions"><a href="pedido.html?editar=' + p.id + '">Editar</a>' + (acaoPago ? ' ' + acaoPago : '') + ' ' + botaoExcluir + '</td>' +
     '</tr>';
   }).join('');
 
@@ -129,6 +133,17 @@ function renderTabelaVendas(lista) {
       var result = await marcarPedidoPago(btn.dataset.marcarPago, true);
       if (result.error) { showToast('Erro ao marcar como pago: ' + result.error.message, 'error'); btn.disabled = false; return; }
       showToast('Pedido marcado como pago.', 'ok');
+      carregarVendas();
+    });
+  });
+
+  tbody.querySelectorAll('[data-excluir]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      if (!confirm('Excluir ' + btn.dataset.label + '? Isso apaga também os lançamentos dele no Financeiro. Essa ação não pode ser desfeita.')) return;
+      btn.disabled = true;
+      var result = await excluirPedido(btn.dataset.excluir);
+      if (result.error) { showToast('Erro ao excluir: ' + result.error.message, 'error'); btn.disabled = false; return; }
+      showToast('Excluído.', 'ok');
       carregarVendas();
     });
   });

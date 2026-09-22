@@ -108,6 +108,19 @@ async function sincronizarFinanceiroDoPedido(pedido, clienteNome, ehFornecedor) 
   }
 }
 
+// Apaga de vez um pedido/orçamento de teste — junto com os itens e qualquer
+// lançamento que ele tenha gerado no Financeiro, pra não sujar as métricas.
+async function excluirPedido(pedidoId) {
+  await supabaseClient.from('financeiro_entradas').delete().eq('pedido_id', pedidoId);
+  await supabaseClient.from('financeiro_saidas').delete().eq('pedido_id', pedidoId);
+  await supabaseClient.from('pedido_itens_vacuo').delete().eq('pedido_id', pedidoId);
+  await supabaseClient.from('pedido_itens_gerais').delete().eq('pedido_id', pedidoId);
+  var { error } = await supabaseClient.from('pedidos').delete().eq('id', pedidoId);
+  if (error) return { error: error };
+  return { ok: true };
+}
+window.excluirPedido = excluirPedido;
+
 // Marca (ou desmarca) um pedido como pago — atualiza o pedido e reflete direto
 // nas entradas do Financeiro já geradas pra ele, sem precisar refazer tudo.
 async function marcarPedidoPago(pedidoId, pago) {
@@ -187,9 +200,14 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
         : '<span class="badge badge-warning">Pendente de pagamento</span>';
     }
 
+    var botaoExcluir = currentUserRole !== 'admin1'
+      ? '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem; color:#a92323; border-color:#a92323;" data-excluir="' + pedido.id + '">Excluir</button>'
+      : '';
+
     var acoes = '<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" data-editar="' + pedido.id + '">Editar</button>' +
       acoesEspecificas +
+      botaoExcluir +
     '</div>';
 
     return '<div style="border-bottom:1px solid var(--off-white); padding:14px 0;">' +
@@ -211,6 +229,28 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
       } else {
         location.href = 'pedido.html?editar=' + id;
       }
+    });
+  });
+
+  conteudo.querySelectorAll('[data-excluir]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var id = btn.dataset.excluir;
+      var item = data.find(function (p) { return p.id === id; });
+      var label = item ? ((item.tipo === 'orcamento' ? 'Orçamento nº ' : 'Pedido nº ') + item.numero) : 'este registro';
+      if (!confirm('Excluir ' + label + '? Isso apaga também os lançamentos dele no Financeiro. Essa ação não pode ser desfeita.')) return;
+
+      btn.disabled = true;
+      btn.textContent = 'Excluindo...';
+      var result = await excluirPedido(id);
+      if (result.error) {
+        alert('Erro ao excluir: ' + result.error.message);
+        btn.disabled = false;
+        btn.textContent = 'Excluir';
+        return;
+      }
+
+      loadHistoricoCliente(clienteId, containerId, onAtualizado);
+      if (typeof onAtualizado === 'function') onAtualizado();
     });
   });
 
