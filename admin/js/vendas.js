@@ -30,7 +30,9 @@ async function carregarVendas() {
   tbody.innerHTML = '<tr><td colspan="8">Carregando...</td></tr>';
 
   var query = supabaseClient.from('pedidos')
-    .select('*, clientes(razao_social, nome_fantasia), profiles(nome_exibicao)')
+    // pedidos tem duas relações com profiles (created_by e vendedor_id) — precisa
+    // dizer qual usar, senão o PostgREST recusa o embed por ambiguidade.
+    .select('*, clientes(razao_social, nome_fantasia), profiles!vendedor_id(nome_exibicao)')
     .order('created_at', { ascending: false })
     .limit(300);
 

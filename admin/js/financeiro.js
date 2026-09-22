@@ -237,7 +237,9 @@ async function gerarComissao(periodo) {
 
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('vendedor_id, valor_total_a_pagar, profiles(nome_exibicao, comissao_percentual)')
+    // pedidos tem duas relações com profiles (created_by e vendedor_id) — precisa
+    // dizer qual usar, senão o PostgREST recusa o embed por ambiguidade.
+    .select('vendedor_id, valor_total_a_pagar, profiles!vendedor_id(nome_exibicao, comissao_percentual)')
     .eq('tipo', 'pedido')
     .gte('created_at', periodo.inicio)
     .lt('created_at', periodo.fim);
