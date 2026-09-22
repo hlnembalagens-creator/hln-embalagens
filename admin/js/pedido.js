@@ -450,6 +450,15 @@ document.getElementById('valor_total_a_pagar').addEventListener('input', functio
   atualizarValorVista();
 });
 
+// Escape hatch pra quando o valor ficar "preso" num total antigo (ex: pedido
+// editado antes dessa trava ter um jeito melhor de destravar sozinha) — força
+// recalcular a partir dos itens de novo, ignorando qualquer edição manual anterior.
+document.getElementById('btn-recalcular-total').addEventListener('click', function () {
+  valorTotalManuallyEdited = false;
+  updateTotals();
+  showToast('Valor recalculado a partir dos itens.', 'ok');
+});
+
 document.getElementById('desconto_percentual').addEventListener('input', function () {
   valorVistaManuallyEdited = false;
   atualizarValorVista();
