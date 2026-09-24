@@ -151,6 +151,10 @@ h1, h2, h3 {
   gap: 2.5em;
   padding: 6em;
   flex-shrink: 0;
+  /* Sem isso, o navegador some com o fundo escuro ao gerar PDF/imprimir
+     (economia de tinta por padrão), e o "HLN" em branco fica invisível. */
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
 }
 
 .bm-label {
