@@ -40,13 +40,17 @@ function addDiasFinanceiro(data, dias) {
   return d.toISOString().slice(0, 10);
 }
 
-async function sincronizarFinanceiroDoPedido(pedido, clienteNome, ehFornecedor) {
+async function sincronizarFinanceiroDoPedido(pedido, clienteNome, ehFornecedor, naoContabilizar) {
   if (!pedido || pedido.tipo !== 'pedido') return;
 
   // Limpa dos dois lados — se o cadastro virou/deixou de ser fornecedor entre
   // uma edição e outra, o pedido pode ter migrado de entrada pra saída (ou vice-versa).
   await supabaseClient.from('financeiro_entradas').delete().eq('pedido_id', pedido.id);
   await supabaseClient.from('financeiro_saidas').delete().eq('pedido_id', pedido.id);
+
+  // Cliente genérico (ex: cadastro "Orçamento") — fica de fora da contabilidade
+  // de propósito. Já limpou qualquer lançamento antigo acima; não cria de novo.
+  if (naoContabilizar) return;
 
   var hoje = new Date();
   var valorBase = (pedido.forma_pagamento === 'a_vista' || pedido.forma_pagamento === 'pix') && pedido.valor_total_a_pagar_vista
@@ -149,7 +153,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
 
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('*, clientes(razao_social, nome_fantasia, eh_fornecedor), pedido_itens_vacuo(*), pedido_itens_gerais(*)')
+    .select('*, clientes(razao_social, nome_fantasia, eh_fornecedor, nao_contabilizar), pedido_itens_vacuo(*), pedido_itens_gerais(*)')
     .eq('cliente_id', clienteId)
     .order('created_at', { ascending: false });
 
@@ -267,7 +271,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
         var pedidoConvertido = Object.assign({}, pedidoOriginal, { tipo: 'pedido', status_orcamento: 'convertido' });
         var clienteInfo = pedidoOriginal.clientes;
         var nomeCliente = clienteInfo ? clienteInfo.razao_social + (clienteInfo.nome_fantasia ? ' (' + clienteInfo.nome_fantasia + ')' : '') : null;
-        await sincronizarFinanceiroDoPedido(pedidoConvertido, nomeCliente, !!(clienteInfo && clienteInfo.eh_fornecedor));
+        await sincronizarFinanceiroDoPedido(pedidoConvertido, nomeCliente, !!(clienteInfo && clienteInfo.eh_fornecedor), !!(clienteInfo && clienteInfo.nao_contabilizar));
       }
 
       loadHistoricoCliente(clienteId, containerId, onAtualizado);

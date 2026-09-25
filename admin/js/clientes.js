@@ -24,9 +24,11 @@ function setFormValues(cliente) {
   });
   document.getElementById('telefone_empresa').value = formatarTelefone(document.getElementById('telefone_empresa').value);
   document.getElementById('contato_telefone').value = formatarTelefone(document.getElementById('contato_telefone').value);
-  // Vendedor não tem esse campo na tela (não pode cadastrar fornecedor).
+  // Vendedor não tem esses campos na tela (não pode cadastrar fornecedor nem marcar genérico).
   var tipoCadastroEl = document.getElementById('tipo_cadastro');
   if (tipoCadastroEl) tipoCadastroEl.value = (cliente && cliente.eh_fornecedor) ? 'fornecedor' : 'cliente';
+  var naoContabilizarEl = document.getElementById('nao_contabilizar');
+  if (naoContabilizarEl) naoContabilizarEl.checked = !!(cliente && cliente.nao_contabilizar);
 }
 
 function resetForm() {
@@ -426,15 +428,21 @@ document.getElementById('cliente-form').addEventListener('submit', async functio
 
   var values = getFormValues();
   var clienteId = document.getElementById('cliente-id').value;
+  var clienteOriginalSubmit = clienteId ? allClientes.find(function (c) { return c.id === clienteId; }) : null;
+
   var tipoCadastroSubmit = document.getElementById('tipo_cadastro');
   if (tipoCadastroSubmit) {
     values.eh_fornecedor = tipoCadastroSubmit.value === 'fornecedor';
   } else {
     // Vendedor não tem esse campo — preserva o valor que já estava salvo (nunca cria
     // fornecedor, mas também nunca rebaixa um fornecedor existente sem querer).
-    var clienteOriginal = clienteId ? allClientes.find(function (c) { return c.id === clienteId; }) : null;
-    values.eh_fornecedor = clienteOriginal ? !!clienteOriginal.eh_fornecedor : false;
+    values.eh_fornecedor = clienteOriginalSubmit ? !!clienteOriginalSubmit.eh_fornecedor : false;
   }
+
+  var naoContabilizarSubmit = document.getElementById('nao_contabilizar');
+  values.nao_contabilizar = naoContabilizarSubmit
+    ? naoContabilizarSubmit.checked
+    : (clienteOriginalSubmit ? !!clienteOriginalSubmit.nao_contabilizar : false);
 
   var cnpjDigitado = normalizarCnpj(values.cnpj_cpf);
   if (cnpjDigitado) {

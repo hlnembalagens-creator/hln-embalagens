@@ -244,6 +244,7 @@ body.admin-body {
 }
 .item-row .form-field { gap: 4px; min-width: 0; }
 .item-row input { padding: 8px; font-size: 0.85rem; width: 100%; min-width: 0; box-sizing: border-box; }
+.item-row input[readonly] { background: var(--off-white); color: var(--gray-400); cursor: not-allowed; }
 .item-row .item-remove {
   background: none;
   border: none;

@@ -37,59 +37,15 @@
   <h1 class="admin-title">Vendas</h1>
 
   <div class="admin-card">
-    <div class="form-grid" style="margin-bottom:0;">
-      <div class="form-field span-2">
-        <label for="filtro-busca">Buscar por cliente ou número</label>
-        <input type="text" id="filtro-busca" placeholder="Ex: Ra-Chu, 23...">
-      </div>
-      <div class="form-field">
-        <label for="filtro-tipo">Tipo</label>
-        <select id="filtro-tipo">
-          <option value="">Todos</option>
-          <option value="pedido">Pedido</option>
-          <option value="orcamento">Orçamento</option>
-        </select>
-      </div>
-      <div class="form-field">
-        <label for="filtro-status">Pagamento</label>
-        <select id="filtro-status">
-          <option value="">Todos</option>
-          <option value="pago">Pago</option>
-          <option value="pendente">Pendente</option>
-        </select>
-      </div>
-      <div class="form-field" data-role-admin>
-        <label for="filtro-vendedor">Vendedor</label>
-        <select id="filtro-vendedor">
-          <option value="">Todos</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-actions" style="margin-top:14px;">
-      <button type="button" class="btn btn-outline" id="btn-ver-todos">Ver todos</button>
+    <div class="form-field">
+      <label for="vendas-busca-cliente">Buscar cliente</label>
+      <input type="text" id="vendas-busca-cliente" placeholder="Digite o nome do cliente...">
+      <span class="hint">Encontre o cliente e veja todos os pedidos/orçamentos dele juntos, num só lugar.</span>
     </div>
   </div>
 
-  <div class="admin-card">
-    <div class="table-scroll">
-      <table class="admin-table">
-        <thead>
-          <tr>
-            <th>Nº</th>
-            <th>Cliente</th>
-            <th>Data</th>
-            <th>Pagamento</th>
-            <th>Valor</th>
-            <th data-role-admin>Vendedor</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="vendas-tbody">
-          <tr><td colspan="8">Carregando...</td></tr>
-        </tbody>
-      </table>
-    </div>
+  <div id="vendas-resultados">
+    <p style="color:var(--gray-400); text-align:center; padding:30px 0;">Digite o nome de um cliente acima pra ver as vendas dele.</p>
   </div>
 </main>
 

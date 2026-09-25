@@ -1,177 +1,50 @@
 var currentUserId = null;
 var currentUserRole = null;
 var ROLES_VENDEDOR = ['vendedor', 'vendedor_ext', 'vendedor_int'];
-var vendasCache = [];
+var clientesCacheVendas = [];
+var buscaDebounceTimer = null;
 
-var FORMA_PAGAMENTO_LABELS_VENDAS = {
-  boleto: 'Boleto', a_vista: 'À Vista', cartao_credito: 'Cartão de Crédito',
-  cartao_debito: 'Cartão de Débito', pix: 'Pix', link_pagamento: 'Link de Pagamento'
-};
-
-function formatBRLVendas(n) {
-  return 'R$ ' + (parseFloat(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+async function carregarClientesParaBusca() {
+  var { data, error } = await supabaseClient.from('clientes').select('id, razao_social, nome_fantasia').order('razao_social');
+  if (error) return;
+  clientesCacheVendas = data || [];
 }
 
-function formatDataVendas(d) {
-  return new Date(d).toLocaleDateString('pt-BR');
-}
+function renderResultadosVendas(termo) {
+  var container = document.getElementById('vendas-resultados');
 
-async function carregarVendedoresFiltro() {
-  var select = document.getElementById('filtro-vendedor');
-  if (!select) return;
-  var { data } = await supabaseClient.from('profiles').select('id, nome_exibicao').order('nome_exibicao');
-  select.innerHTML = '<option value="">Todos</option>' + (data || []).map(function (p) {
-    return '<option value="' + p.id + '">' + p.nome_exibicao + '</option>';
-  }).join('');
-}
-
-async function carregarVendas() {
-  var tbody = document.getElementById('vendas-tbody');
-  tbody.innerHTML = '<tr><td colspan="8">Carregando...</td></tr>';
-
-  var query = supabaseClient.from('pedidos')
-    // pedidos tem duas relações com profiles (created_by e vendedor_id) — precisa
-    // dizer qual usar, senão o PostgREST recusa o embed por ambiguidade.
-    .select('*, clientes(razao_social, nome_fantasia), profiles!vendedor_id(nome_exibicao)')
-    .order('created_at', { ascending: false })
-    .limit(300);
-
-  // Vendedor só enxerga as próprias vendas — quem vê tudo é admin/ADM1.
-  if (ROLES_VENDEDOR.indexOf(currentUserRole) !== -1) {
-    query = query.eq('vendedor_id', currentUserId);
-  }
-
-  var { data, error } = await query;
-  if (error) {
-    tbody.innerHTML = '<tr><td colspan="8">Erro ao carregar: ' + error.message + '</td></tr>';
+  if (!termo) {
+    container.innerHTML = '<p style="color:var(--gray-400); text-align:center; padding:30px 0;">Digite o nome de um cliente acima pra ver as vendas dele.</p>';
     return;
   }
 
-  vendasCache = data || [];
-  aplicarFiltrosERenderizar();
-}
-
-function aplicarFiltrosERenderizar() {
-  var busca = (document.getElementById('filtro-busca').value || '').trim().toLowerCase();
-  var vendedorEl = document.getElementById('filtro-vendedor');
-  var vendedorFiltro = vendedorEl ? vendedorEl.value : '';
-  var statusFiltro = document.getElementById('filtro-status').value;
-  var tipoFiltro = document.getElementById('filtro-tipo').value;
-
-  var lista = vendasCache.filter(function (p) {
-    if (tipoFiltro && p.tipo !== tipoFiltro) return false;
-    if (vendedorFiltro && p.vendedor_id !== vendedorFiltro) return false;
-    if (statusFiltro === 'pago' && !p.pago) return false;
-    if (statusFiltro === 'pendente' && p.pago) return false;
-    if (busca) {
-      var nomeCliente = p.clientes ? (p.clientes.razao_social + ' ' + (p.clientes.nome_fantasia || '')) : '';
-      var alvo = (String(p.numero) + ' ' + nomeCliente).toLowerCase();
-      if (alvo.indexOf(busca) === -1) return false;
-    }
-    return true;
+  var termoBusca = termo.toLowerCase();
+  var encontrados = clientesCacheVendas.filter(function (c) {
+    var alvo = (c.razao_social + ' ' + (c.nome_fantasia || '')).toLowerCase();
+    return alvo.indexOf(termoBusca) !== -1;
   });
 
-  renderTabelaVendas(lista);
-}
-
-function renderTabelaVendas(lista) {
-  var tbody = document.getElementById('vendas-tbody');
-  if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="8">Nenhum registro encontrado.</td></tr>';
+  if (!encontrados.length) {
+    container.innerHTML = '<p style="color:var(--gray-400); text-align:center; padding:30px 0;">Nenhum cliente encontrado com esse nome.</p>';
     return;
   }
 
-  tbody.innerHTML = lista.map(function (p) {
-    var clienteNome = p.clientes ? (p.clientes.razao_social + (p.clientes.nome_fantasia ? ' (' + p.clientes.nome_fantasia + ')' : '')) : '—';
-    var tipoLabel = (p.tipo === 'orcamento' ? 'Orç.' : 'Ped.') + ' nº ' + p.numero;
-
-    var statusBadge;
-    if (p.tipo === 'orcamento') {
-      statusBadge = p.status_orcamento === 'convertido' ? '<span class="badge badge-ok">Convertido</span>'
-        : p.status_orcamento === 'nao_convertido' ? '<span class="badge badge-warning">Não convertido</span>'
-        : '<span class="badge badge-warning">Orçamento pendente</span>';
-    } else {
-      statusBadge = p.pago
-        ? '<span class="badge badge-ok">Pago' + (p.data_pagamento ? ' em ' + formatDataVendas(p.data_pagamento) : '') + '</span>'
-        : '<span class="badge badge-warning">Pendente</span>';
-    }
-
-    var vendedorNome = p.profiles ? p.profiles.nome_exibicao : '—';
-
-    var acaoPago = '';
-    if (p.tipo === 'pedido') {
-      acaoPago = p.pago
-        ? '<button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem;" data-marcar-pendente="' + p.id + '">Marcar pendente</button>'
-        : '<button type="button" class="btn btn-primary" style="padding:4px 10px; font-size:0.78rem;" data-marcar-pago="' + p.id + '">Pago</button>';
-    }
-
-    var botaoExcluir = currentUserRole !== 'admin1'
-      ? '<button type="button" class="btn btn-outline" style="padding:4px 10px; font-size:0.78rem; color:#a92323; border-color:#a92323;" data-excluir="' + p.id + '" data-label="' + tipoLabel + '">Excluir</button>'
-      : '';
-
-    return '<tr>' +
-      '<td>' + tipoLabel + '</td>' +
-      '<td>' + clienteNome + '</td>' +
-      '<td>' + formatDataVendas(p.created_at) + '</td>' +
-      '<td>' + (FORMA_PAGAMENTO_LABELS_VENDAS[p.forma_pagamento] || '—') + '</td>' +
-      '<td>' + formatBRLVendas(p.valor_total_a_pagar) + '</td>' +
-      '<td data-role-admin>' + vendedorNome + '</td>' +
-      '<td>' + statusBadge + '</td>' +
-      '<td class="row-actions"><a href="pedido.html?editar=' + p.id + '">Editar</a>' + (acaoPago ? ' ' + acaoPago : '') + ' ' + botaoExcluir + '</td>' +
-    '</tr>';
+  container.innerHTML = encontrados.map(function (c) {
+    return '<div class="admin-card">' +
+      '<h2>' + c.razao_social + (c.nome_fantasia ? ' (' + c.nome_fantasia + ')' : '') + '</h2>' +
+      '<div id="vendas-hist-' + c.id + '">Carregando...</div>' +
+    '</div>';
   }).join('');
 
-  // data-role-admin nas células novas não passa pelo auth-guard (que já rodou no
-  // load da página) — remove manualmente se o usuário atual não é admin/ADM1.
-  if (ROLES_VENDEDOR.indexOf(currentUserRole) !== -1) {
-    tbody.querySelectorAll('[data-role-admin]').forEach(function (el) { el.remove(); });
-  }
-
-  tbody.querySelectorAll('[data-marcar-pago]').forEach(function (btn) {
-    btn.addEventListener('click', async function () {
-      btn.disabled = true;
-      var result = await marcarPedidoPago(btn.dataset.marcarPago, true);
-      if (result.error) { showToast('Erro ao marcar como pago: ' + result.error.message, 'error'); btn.disabled = false; return; }
-      showToast('Pedido marcado como pago.', 'ok');
-      carregarVendas();
-    });
-  });
-
-  tbody.querySelectorAll('[data-excluir]').forEach(function (btn) {
-    btn.addEventListener('click', async function () {
-      if (!confirm('Excluir ' + btn.dataset.label + '? Isso apaga também os lançamentos dele no Financeiro. Essa ação não pode ser desfeita.')) return;
-      btn.disabled = true;
-      var result = await excluirPedido(btn.dataset.excluir);
-      if (result.error) { showToast('Erro ao excluir: ' + result.error.message, 'error'); btn.disabled = false; return; }
-      showToast('Excluído.', 'ok');
-      carregarVendas();
-    });
-  });
-
-  tbody.querySelectorAll('[data-marcar-pendente]').forEach(function (btn) {
-    btn.addEventListener('click', async function () {
-      if (!confirm('Marcar este pedido como pendente de pagamento de novo?')) return;
-      btn.disabled = true;
-      var result = await marcarPedidoPago(btn.dataset.marcarPendente, false);
-      if (result.error) { showToast('Erro: ' + result.error.message, 'error'); btn.disabled = false; return; }
-      showToast('Pedido marcado como pendente.', 'ok');
-      carregarVendas();
-    });
+  encontrados.forEach(function (c) {
+    loadHistoricoCliente(c.id, 'vendas-hist-' + c.id);
   });
 }
 
-document.getElementById('filtro-busca').addEventListener('input', aplicarFiltrosERenderizar);
-document.getElementById('filtro-status').addEventListener('change', aplicarFiltrosERenderizar);
-document.getElementById('filtro-tipo').addEventListener('change', aplicarFiltrosERenderizar);
-var filtroVendedorEl = document.getElementById('filtro-vendedor');
-if (filtroVendedorEl) filtroVendedorEl.addEventListener('change', aplicarFiltrosERenderizar);
-
-document.getElementById('btn-ver-todos').addEventListener('click', function () {
-  document.getElementById('filtro-busca').value = '';
-  document.getElementById('filtro-tipo').value = '';
-  document.getElementById('filtro-status').value = '';
-  if (filtroVendedorEl) filtroVendedorEl.value = '';
-  aplicarFiltrosERenderizar();
+document.getElementById('vendas-busca-cliente').addEventListener('input', function (e) {
+  var termo = e.target.value.trim();
+  clearTimeout(buscaDebounceTimer);
+  buscaDebounceTimer = setTimeout(function () { renderResultadosVendas(termo); }, 250);
 });
 
 /* ===================== INIT ===================== */
@@ -182,6 +55,5 @@ document.getElementById('btn-ver-todos').addEventListener('click', function () {
   currentUserId = auth.session.user.id;
   currentUserRole = auth.profile.role;
 
-  if (ROLES_VENDEDOR.indexOf(currentUserRole) === -1) await carregarVendedoresFiltro();
-  await carregarVendas();
+  await carregarClientesParaBusca();
 })();

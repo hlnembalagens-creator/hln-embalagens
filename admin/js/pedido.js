@@ -9,6 +9,21 @@ var geraisItems = [];
 var valorTotalManuallyEdited = false;
 var valorVistaManuallyEdited = false;
 var pedidoEmEdicaoId = null;
+var fatorPadraoVacuo = 0;
+
+// Vendedor trabalha com o Fator padrão da empresa, fechado — só admin/ADM1
+// pode digitar um valor diferente (ex: numa negociação especial).
+function fatorTravadoParaRole() {
+  return ROLES_VENDEDOR.indexOf(currentUserRole) !== -1;
+}
+
+async function carregarFatorPadrao() {
+  var { data } = await supabaseClient.from('configuracoes').select('valor').eq('chave', 'fator_padrao_vacuo').maybeSingle();
+  fatorPadraoVacuo = data ? toNumber(data.valor) : 0;
+
+  var inputPadrao = document.getElementById('fator-padrao-input');
+  if (inputPadrao) inputPadrao.value = fatorPadraoVacuo || '';
+}
 
 // Normaliza telefone de cliente (com ou sem DDI) pro formato que a API do WhatsApp espera.
 function telefoneParaWhatsapp(telefone) {
@@ -169,7 +184,7 @@ function renderVacuoRow(item) {
     '<div class="form-field"><label class="item-row-label">Tipo</label><input type="text" data-f="tipo" placeholder="Ex: NATURAL" value="' + (item.tipo || '') + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Qtd.</label><input type="text" inputmode="decimal" data-f="quantidade" value="' + item.quantidade + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Peso</label><span class="calc-readout" data-out="peso">0</span></div>' +
-    '<div class="form-field"><label class="item-row-label">Fator</label><input type="text" inputmode="decimal" data-f="taxa_preco_peso" value="' + item.taxa_preco_peso + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Fator</label><input type="text" inputmode="decimal" data-f="taxa_preco_peso" value="' + item.taxa_preco_peso + '"' + (fatorTravadoParaRole() ? ' readonly title="Fator padrão da empresa — só admin pode mudar. Fale com um administrador se precisar de uma negociação especial."' : '') + '></div>' +
     '<div class="form-field"><label class="item-row-label">Vl. Total</label><span class="calc-readout" data-out="vl_total">R$ 0,00</span></div>' +
     '<button type="button" class="item-remove" title="Remover item">✕</button>';
 
@@ -206,10 +221,22 @@ function updateVacuoRowReadout(row, item) {
   row.querySelector('[data-out="vl_total"]').textContent = formatBRL(calc.vl_total);
 }
 
+var btnSalvarFatorPadrao = document.getElementById('btn-salvar-fator-padrao');
+if (btnSalvarFatorPadrao) {
+  btnSalvarFatorPadrao.addEventListener('click', async function () {
+    var novoValor = toNumber(document.getElementById('fator-padrao-input').value);
+    var { error } = await supabaseClient.from('configuracoes')
+      .upsert({ chave: 'fator_padrao_vacuo', valor: String(novoValor), updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+    if (error) { showToast('Erro ao salvar Fator padrão: ' + error.message, 'error'); return; }
+    fatorPadraoVacuo = novoValor;
+    showToast('Fator padrão atualizado para ' + novoValor + '.', 'ok');
+  });
+}
+
 document.getElementById('btn-add-vacuo').addEventListener('click', function () {
   var item = {
     _id: uid(), item: 'SACO A VÁCUO', material: '', largura_m: 0, comprimento_m: 0,
-    espessura_micras: 0, tipo: '', quantidade: 0, taxa_preco_peso: 0
+    espessura_micras: 0, tipo: '', quantidade: 0, taxa_preco_peso: fatorPadraoVacuo
   };
   vacuoItems.push(item);
   renderVacuoRow(item);
@@ -595,7 +622,7 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
   if (geraisRows.length) await supabaseClient.from('pedido_itens_gerais').insert(geraisRows);
 
   var nomeClienteFinanceiro = selectedCliente.razao_social + (selectedCliente.nome_fantasia ? ' (' + selectedCliente.nome_fantasia + ')' : '');
-  await sincronizarFinanceiroDoPedido(pedido, nomeClienteFinanceiro, !!selectedCliente.eh_fornecedor);
+  await sincronizarFinanceiroDoPedido(pedido, nomeClienteFinanceiro, !!selectedCliente.eh_fornecedor, !!selectedCliente.nao_contabilizar);
 
   pedidoEmEdicaoId = pedido.id;
   pedidoEmEdicaoTipo = pedido.tipo;
@@ -1188,6 +1215,7 @@ function renderPedidoPagoStatus() {
   currentUserRole = auth.profile.role;
   await loadClientesSelect();
   await loadVendedoresSelect();
+  await carregarFatorPadrao();
   renderGeraisItems();
   updateTotals();
 
