@@ -25,6 +25,8 @@ var PROMPT = 'Você vai analisar uma Nota Fiscal (NF-e/DANFE), romaneio ou pedid
   '}\n\n' +
   'Regras: números sempre como number puro (nunca string, nunca "R$", nunca vírgula decimal — use ponto). ' +
   'Datas sempre "YYYY-MM-DD". Se não achar um valor, use null (nunca invente). ' +
+  'NCM em especial: só preencha itens[].ncm se o código NCM estiver literalmente escrito no documento (ex: numa coluna "NCM/SH" de uma NF-e/DANFE). ' +
+  'NUNCA estime, deduza ou chute um NCM a partir do tipo de produto (mesmo que você "saiba" qual seria o NCM típico) — se o documento não trouxer o código, use null. ' +
   'Se o documento tiver parcelas/faturas com datas de vencimento, liste todas em pagamento.parcelas. ' +
   'Se não houver parcelamento explícito, coloque uma única parcela com o valor total e vencimento null.\n\n' +
   'ATENÇÃO — se o documento for uma NF-e/DANFE (nota fiscal eletrônica), a tabela "Itens da nota fiscal" tem colunas nesta ordem: ' +

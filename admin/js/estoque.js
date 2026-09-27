@@ -171,6 +171,7 @@ function atualizarMargemPreviewAjuste() {
 function abrirModalAjustar(produto) {
   produtoEmAjuste = produto;
   document.getElementById('ajustar-nome').value = produto.nome_produto || '';
+  document.getElementById('ajustar-ncm').value = produto.ncm || '';
   document.getElementById('ajustar-quantidade').value = produto.quantidade_estoque || 0;
   document.getElementById('ajustar-custo').value = produto.preco_custo != null ? produto.preco_custo : '';
   document.getElementById('ajustar-preco').value = produto.preco_unitario != null ? produto.preco_unitario : '';
@@ -230,9 +231,11 @@ if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async fun
   btn.disabled = true;
   btn.textContent = 'Salvando...';
 
+  var novoNcm = document.getElementById('ajustar-ncm').value.trim() || null;
+
   var { error } = await supabaseClient
     .from('produtos_catalogo')
-    .update({ nome_produto: novoNome, quantidade_estoque: novaQuantidade, preco_custo: novoCusto, preco_unitario: novoPreco })
+    .update({ nome_produto: novoNome, ncm: novoNcm, quantidade_estoque: novaQuantidade, preco_custo: novoCusto, preco_unitario: novoPreco })
     .eq('id', produtoEmAjuste.id);
 
   btn.disabled = false;
@@ -354,14 +357,52 @@ function normalizarNomeProdutoEstoque(s) {
     .trim();
 }
 
+// Extrai as medidas (largura/comprimento/espessura) de um nome de produto,
+// como uma lista de números ordenada — "0,15 x 0,20 - 160" e "15X20X160"
+// viram os dois [15,20,160]. O "0," de notação em metro (0,15 = 15cm) é
+// removido antes de extrair, pra unificar os dois jeitos de escrever.
+function extrairDimensoesEstoque(nome) {
+  var limpo = (nome || '').replace(/0,(?=\d)/g, '');
+  var nums = limpo.match(/\d+/g) || [];
+  return nums.map(function (n) { return parseInt(n, 10); }).sort(function (a, b) { return a - b; });
+}
+
+function dimensoesIguaisEstoque(a, b) {
+  if (!a.length || !b.length || a.length !== b.length) return false;
+  return a.every(function (n, i) { return n === b[i]; });
+}
+
+// Próximo código da nossa numeração sequencial interna (1, 2, 3...) — nunca
+// o código/SKU do fornecedor, que a IA às vezes lê do documento mas não tem
+// nada a ver com a nossa numeração.
+function proximoCodigoSequencialEstoque(produtos) {
+  var max = produtos.reduce(function (acc, p) {
+    var n = parseInt(p.codigo_produto, 10);
+    return !isNaN(n) && n > acc ? n : acc;
+  }, 0);
+  return String(max + 1);
+}
+
 // Acha o produto já cadastrado mais parecido com a descrição lida — igual
-// exata primeiro, senão por sobreposição de palavras (score >= 0.6).
+// exata primeiro. Quando a descrição tem medidas (a imensa maioria — vácuo,
+// etiqueta, saco), SÓ casa se as medidas baterem certinho: nomes com as
+// mesmas palavras (SACO, VÁCUO, NYLON, POLI...) mas tamanho diferente são
+// produtos diferentes, então sobreposição de palavras sozinha dava falso
+// positivo. Sem medida numérica clara, cai pra sobreposição de palavras
+// (score >= 0.6), útil pra produtos com nome genérico (ex: "Bobina de PDV").
 function encontrarProdutoParecidoEstoque(descricao, produtos) {
   var alvo = normalizarNomeProdutoEstoque(descricao);
   if (!alvo) return null;
 
   var exato = produtos.find(function (p) { return normalizarNomeProdutoEstoque(p.nome_produto) === alvo; });
   if (exato) return exato;
+
+  var dimensoesAlvo = extrairDimensoesEstoque(descricao);
+  if (dimensoesAlvo.length >= 2) {
+    return produtos.find(function (p) {
+      return dimensoesIguaisEstoque(dimensoesAlvo, extrairDimensoesEstoque(p.nome_produto));
+    }) || null;
+  }
 
   var alvoTokens = alvo.split(' ').filter(Boolean);
   if (!alvoTokens.length) return null;
@@ -658,14 +699,15 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
         var novaQuantidade = (existenteProduto.quantidade_estoque || 0) + item.quantidade;
         await supabaseClient.from('produtos_catalogo').update({
           quantidade_estoque: novaQuantidade,
-          preco_custo: item.valor_unitario || existenteProduto.preco_custo,
-          codigo_produto: existenteProduto.codigo_produto || item.codigo,
-          ncm: existenteProduto.ncm || item.ncm
+          preco_custo: item.valor_unitario || existenteProduto.preco_custo
         }).eq('id', existenteProduto.id);
         existenteProduto.quantidade_estoque = novaQuantidade;
       } else {
+        // Código é sempre o próximo da nossa sequência interna — nunca o código
+        // do fornecedor no documento. NCM fica em branco (só o admin preenche;
+        // a IA não deve inventar um NCM que não está escrito no documento).
         var { data: novoProduto } = await supabaseClient.from('produtos_catalogo').insert({
-          nome_produto: item.descricao, codigo_produto: item.codigo, ncm: item.ncm,
+          nome_produto: item.descricao, codigo_produto: proximoCodigoSequencialEstoque(produtosAtuais),
           quantidade_estoque: item.quantidade, preco_custo: item.valor_unitario || null,
           created_by: currentUserIdEstoque
         }).select().single();
