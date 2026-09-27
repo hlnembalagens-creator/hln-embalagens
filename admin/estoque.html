@@ -134,7 +134,11 @@
 <div class="modal-overlay" id="modal-ajustar-estoque">
   <div class="modal-box" style="max-width:420px;">
     <h3>Ajustar produto</h3>
-    <p id="ajustar-produto-nome" style="margin-bottom:16px; color:var(--gray-700); font-weight:600;"></p>
+    <div class="form-field" style="margin-bottom:16px;">
+      <label for="ajustar-nome">Descrição</label>
+      <input type="text" id="ajustar-nome">
+      <span class="hint">Corrige aqui até o próximo romaneio vir com a descrição certa.</span>
+    </div>
     <div class="form-field" style="margin-bottom:16px;">
       <label for="ajustar-quantidade">Quantidade em estoque</label>
       <input type="text" inputmode="decimal" id="ajustar-quantidade">

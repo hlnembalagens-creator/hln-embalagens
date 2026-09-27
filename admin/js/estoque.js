@@ -120,7 +120,7 @@ function atualizarMargemPreviewAjuste() {
 
 function abrirModalAjustar(produto) {
   produtoEmAjuste = produto;
-  document.getElementById('ajustar-produto-nome').textContent = produto.nome_produto;
+  document.getElementById('ajustar-nome').value = produto.nome_produto || '';
   document.getElementById('ajustar-quantidade').value = produto.quantidade_estoque || 0;
   document.getElementById('ajustar-custo').value = produto.preco_custo != null ? produto.preco_custo : '';
   document.getElementById('ajustar-preco').value = produto.preco_unitario != null ? produto.preco_unitario : '';
@@ -145,6 +145,13 @@ if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async fun
   if (!produtoEmAjuste) return;
   var errorEl = document.getElementById('ajustar-error');
   errorEl.style.display = 'none';
+
+  var novoNome = document.getElementById('ajustar-nome').value.trim();
+  if (!novoNome) {
+    errorEl.textContent = 'A descrição não pode ficar vazia.';
+    errorEl.style.display = 'block';
+    return;
+  }
 
   var novaQuantidade = toNumberEstoque(document.getElementById('ajustar-quantidade').value);
   if (novaQuantidade < 0) {
@@ -175,7 +182,7 @@ if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async fun
 
   var { error } = await supabaseClient
     .from('produtos_catalogo')
-    .update({ quantidade_estoque: novaQuantidade, preco_custo: novoCusto, preco_unitario: novoPreco })
+    .update({ nome_produto: novoNome, quantidade_estoque: novaQuantidade, preco_custo: novoCusto, preco_unitario: novoPreco })
     .eq('id', produtoEmAjuste.id);
 
   btn.disabled = false;
