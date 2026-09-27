@@ -50,8 +50,8 @@ function formatarCaixasEstoque(produto) {
 function renderHeadEstoque() {
   var thead = document.getElementById('estoque-thead');
   thead.innerHTML = isAdminEstoque
-    ? '<tr><th>Nome</th><th>Código</th><th>NCM</th><th>Custo Unit.</th><th>Venda Unit.</th><th>Margem</th><th>Estoque</th><th>Caixas</th><th></th></tr>'
-    : '<tr><th>Nome</th><th>Estoque</th><th>Caixas</th></tr>';
+    ? '<tr><th>Nome</th><th>Código</th><th>NCM</th><th>Custo Unit.</th><th>Venda Unit.</th><th>Margem</th><th>Estoque</th><th class="col-caixas">Caixas</th><th></th></tr>'
+    : '<tr><th>Nome</th><th>Estoque</th><th class="col-caixas">Caixas</th></tr>';
 }
 
 function renderEstoqueTable(list) {
@@ -64,7 +64,7 @@ function renderEstoqueTable(list) {
 
   if (!isAdminEstoque) {
     tbody.innerHTML = list.map(function (p) {
-      return '<tr><td>' + p.nome_produto + '</td><td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + '</td><td>' + formatarCaixasEstoque(p) + '</td></tr>';
+      return '<tr><td>' + p.nome_produto + '</td><td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + '</td><td class="col-caixas">' + formatarCaixasEstoque(p) + '</td></tr>';
     }).join('');
     return;
   }
@@ -85,7 +85,7 @@ function renderEstoqueTable(list) {
       '<td>' + preco + '</td>' +
       '<td>' + margem + '</td>' +
       '<td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + estoqueBaixo + '</td>' +
-      '<td>' + formatarCaixasEstoque(p) + '</td>' +
+      '<td class="col-caixas">' + formatarCaixasEstoque(p) + '</td>' +
       '<td class="row-actions"><button data-ajustar="' + p.id + '">Editar</button> <button data-excluir-produto="' + p.id + '" style="color:#a92323;">Excluir</button></td>' +
     '</tr>';
   }).join('');
