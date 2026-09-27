@@ -61,7 +61,7 @@ function renderEstoqueTable(list) {
       '<td>' + preco + '</td>' +
       '<td>' + margem + '</td>' +
       '<td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + estoqueBaixo + '</td>' +
-      '<td class="row-actions"><button data-ajustar="' + p.id + '">Editar</button></td>' +
+      '<td class="row-actions"><button data-ajustar="' + p.id + '">Editar</button> <button data-excluir-produto="' + p.id + '" style="color:#a92323;">Excluir</button></td>' +
     '</tr>';
   }).join('');
 
@@ -70,6 +70,24 @@ function renderEstoqueTable(list) {
       var produto = allProdutosEstoque.find(function (p) { return p.id === btn.dataset.ajustar; });
       if (!produto) return;
       abrirModalAjustar(produto);
+    });
+  });
+
+  tbody.querySelectorAll('[data-excluir-produto]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var produto = allProdutosEstoque.find(function (p) { return p.id === btn.dataset.excluirProduto; });
+      if (!produto) return;
+      if (!confirm('Excluir "' + produto.nome_produto + '" do estoque? Essa ação não pode ser desfeita.')) return;
+
+      btn.disabled = true;
+      var { error } = await supabaseClient.from('produtos_catalogo').delete().eq('id', produto.id);
+      if (error) {
+        showToast('Erro ao excluir: ' + error.message, 'error');
+        btn.disabled = false;
+        return;
+      }
+      showToast('Produto excluído.', 'ok');
+      loadProdutosEstoque();
     });
   });
 }
@@ -293,10 +311,54 @@ function arquivoParaBase64(file) {
   });
 }
 
+// Normaliza pra comparar descrições vindas de PDF/foto com o que já está
+// cadastrado, ignorando acento, caixa e pontuação (varia bastante entre
+// romaneios do mesmo fornecedor).
+function normalizarNomeProdutoEstoque(s) {
+  return (s || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .trim();
+}
+
+// Acha o produto já cadastrado mais parecido com a descrição lida — igual
+// exata primeiro, senão por sobreposição de palavras (score >= 0.6).
+function encontrarProdutoParecidoEstoque(descricao, produtos) {
+  var alvo = normalizarNomeProdutoEstoque(descricao);
+  if (!alvo) return null;
+
+  var exato = produtos.find(function (p) { return normalizarNomeProdutoEstoque(p.nome_produto) === alvo; });
+  if (exato) return exato;
+
+  var alvoTokens = alvo.split(' ').filter(Boolean);
+  if (!alvoTokens.length) return null;
+
+  var melhor = null, melhorScore = 0;
+  produtos.forEach(function (p) {
+    var tokensP = normalizarNomeProdutoEstoque(p.nome_produto).split(' ').filter(Boolean);
+    if (!tokensP.length) return;
+    var comuns = alvoTokens.filter(function (t) { return tokensP.indexOf(t) !== -1; }).length;
+    var score = comuns / Math.max(alvoTokens.length, tokensP.length);
+    if (score > melhorScore) { melhorScore = score; melhor = p; }
+  });
+  return melhorScore >= 0.6 ? melhor : null;
+}
+
 function renderRevItemRow(item) {
   var tbody = document.getElementById('rev-itens-tbody');
   var row = document.createElement('tr');
+
+  var sugestao = encontrarProdutoParecidoEstoque(item.descricao, allProdutosEstoque);
+  var selectHtml = '<select data-f="produto_id" style="width:180px;"><option value="">— Novo produto —</option>' +
+    allProdutosEstoque.map(function (p) {
+      var selecionado = sugestao && sugestao.id === p.id ? ' selected' : '';
+      return '<option value="' + p.id + '"' + selecionado + '>' + p.nome_produto + '</option>';
+    }).join('') +
+    '</select>';
+
   row.innerHTML =
+    '<td>' + selectHtml + '</td>' +
     '<td><input type="text" data-f="descricao" value="' + (item.descricao || '').replace(/"/g, '&quot;') + '" style="width:100%;"></td>' +
     '<td><input type="text" data-f="codigo" value="' + (item.codigo || '') + '" style="width:90px;"></td>' +
     '<td><input type="text" data-f="ncm" value="' + (item.ncm || '') + '" style="width:90px;"></td>' +
@@ -464,6 +526,7 @@ function lerLinhasItens() {
   return Array.from(document.querySelectorAll('#rev-itens-tbody tr')).map(function (row) {
     var get = function (f) { return row.querySelector('[data-f="' + f + '"]').value; };
     return {
+      produtoId: get('produto_id') || null,
       descricao: get('descricao').trim(),
       codigo: get('codigo').trim() || null,
       ncm: get('ncm').trim() || null,
@@ -549,14 +612,15 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
       }
     }
 
-    // 2) Itens — casa com produto existente do Catálogo pelo nome; se não achar, cria novo
-    //    (preço de venda fica em branco de propósito — só o custo vem da NF).
+    // 2) Itens — usa o produto selecionado na tela (ou casado por nome/similaridade
+    //    automaticamente); se não achar, cria novo (preço de venda fica em branco
+    //    de propósito — só o custo vem da NF).
     var produtosAtuais = allProdutosEstoque.slice();
     for (var i = 0; i < itens.length; i++) {
       var item = itens[i];
-      var existenteProduto = produtosAtuais.find(function (p) {
-        return (p.nome_produto || '').trim().toLowerCase() === item.descricao.toLowerCase();
-      });
+      var existenteProduto = item.produtoId
+        ? produtosAtuais.find(function (p) { return p.id === item.produtoId; })
+        : encontrarProdutoParecidoEstoque(item.descricao, produtosAtuais);
 
       if (existenteProduto) {
         var novaQuantidade = (existenteProduto.quantidade_estoque || 0) + item.quantidade;
