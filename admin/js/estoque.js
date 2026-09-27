@@ -64,7 +64,11 @@ function renderEstoqueTable(list) {
 
   if (!isAdminEstoque) {
     tbody.innerHTML = list.map(function (p) {
-      return '<tr><td>' + p.nome_produto + '</td><td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + '</td><td class="col-caixas">' + formatarCaixasEstoque(p) + '</td></tr>';
+      var qtd = p.quantidade_estoque || 0;
+      var qtdCell = qtd <= 0
+        ? '<span style="color:#a92323; font-weight:600;">' + qtd.toLocaleString('pt-BR') + '</span>'
+        : qtd.toLocaleString('pt-BR');
+      return '<tr><td>' + p.nome_produto + '</td><td>' + qtdCell + '</td><td class="col-caixas">' + formatarCaixasEstoque(p) + '</td></tr>';
     }).join('');
     return;
   }
@@ -75,7 +79,10 @@ function renderEstoqueTable(list) {
     var custo = p.preco_custo != null ? 'R$ ' + Number(p.preco_custo).toFixed(2).replace('.', ',') : '—';
     var preco = p.preco_unitario != null ? 'R$ ' + Number(p.preco_unitario).toFixed(2).replace('.', ',') : '—';
     var margem = formatarMargemEstoque(calcularMargemPercentualEstoque(p.preco_custo, p.preco_unitario));
-    var estoqueBaixo = (p.quantidade_estoque || 0) <= 0 ? ' <span class="badge badge-warning">Sem estoque</span>' : '';
+    var qtdEstoque = p.quantidade_estoque || 0;
+    var estoqueCell = qtdEstoque <= 0
+      ? '<span style="color:#a92323; font-weight:600;">' + qtdEstoque.toLocaleString('pt-BR') + '</span>'
+      : qtdEstoque.toLocaleString('pt-BR');
 
     return '<tr>' +
       '<td>' + p.nome_produto + '</td>' +
@@ -84,7 +91,7 @@ function renderEstoqueTable(list) {
       '<td>' + custo + '</td>' +
       '<td>' + preco + '</td>' +
       '<td>' + margem + '</td>' +
-      '<td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + estoqueBaixo + '</td>' +
+      '<td>' + estoqueCell + '</td>' +
       '<td class="col-caixas">' + formatarCaixasEstoque(p) + '</td>' +
       '<td class="row-actions"><button data-ajustar="' + p.id + '">Editar</button> <button data-excluir-produto="' + p.id + '" style="color:#a92323;">Excluir</button></td>' +
     '</tr>';
