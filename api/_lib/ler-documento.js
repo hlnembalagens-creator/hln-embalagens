@@ -32,7 +32,14 @@ var PROMPT = 'Você vai analisar uma Nota Fiscal (NF-e/DANFE), romaneio ou pedid
   'O CFOP é um código de 4 dígitos (ex: 5102, 6102) que identifica o tipo de operação fiscal — NUNCA é a quantidade comprada, mesmo que fique visualmente perto ou pareça um número "solto". ' +
   'A quantidade real está na coluna "Qtde", normalmente com casas decimais (ex: 5,00000). ' +
   'Depois de extrair, CONFIRA: quantidade × valor_unitario deve bater com valor_total (e valor_total de todos os itens deve bater com o total da nota). ' +
-  'Se não bater, você pegou o campo errado — corrija antes de responder.';
+  'Se não bater, você pegou o campo errado — corrija antes de responder.\n\n' +
+  'PRAZO DE PAGAMENTO em dias corridos (comum em pedido/romaneio, ex: "28/35 dias", "30/60/90 dias", "SEM NF 28/35 DIAS"): ' +
+  'isso significa parcelas vencendo N dias corridos APÓS a data de emissão do documento — não são valores em reais. ' +
+  'Calcule vencimento = data_emissao + N dias pra cada prazo listado, e divida o valor_total_documento igualmente entre essas parcelas (arredondando a última pra fechar o total certinho). ' +
+  'Se não houver data_emissao explícita, use null nas parcelas mas ainda assim gere uma parcela por prazo listado.\n\n' +
+  'CNPJ DO FORNECEDOR ausente no campo próprio: se houver uma "CHAVE PIX" no documento com exatamente 14 dígitos numéricos, ' +
+  'é muito provavelmente o CNPJ do fornecedor sem formatação — normalize pra "00.000.000/0000-00" e use em fornecedor.cnpj. ' +
+  'Nunca confunda o CNPJ do CLIENTE (HLN Embalagens e Equipamentos, CNPJ 66.878.650/0001-42) com o do fornecedor — se um campo "CNPJ/CPF" aparecer dentro de uma seção "CLIENTE", esse é o CNPJ da HLN, não do fornecedor, e deve ser ignorado.';
 
 // Retorna { ok: true, dados } ou { ok: false, error, debug? }
 async function extrairDadosDocumento(pdfBase64) {
