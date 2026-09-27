@@ -130,15 +130,24 @@
 
 <div class="print-sheet" id="lista-preco-sheet"></div>
 
-<!-- MODAL AJUSTAR QUANTIDADE (admin) -->
+<!-- MODAL AJUSTAR PRODUTO (admin) -->
 <div class="modal-overlay" id="modal-ajustar-estoque">
   <div class="modal-box" style="max-width:420px;">
-    <h3>Ajustar quantidade em estoque</h3>
+    <h3>Ajustar produto</h3>
     <p id="ajustar-produto-nome" style="margin-bottom:16px; color:var(--gray-700); font-weight:600;"></p>
     <div class="form-field" style="margin-bottom:16px;">
-      <label for="ajustar-quantidade">Quantidade atual</label>
+      <label for="ajustar-quantidade">Quantidade em estoque</label>
       <input type="text" inputmode="decimal" id="ajustar-quantidade">
     </div>
+    <div class="form-field" style="margin-bottom:16px;">
+      <label for="ajustar-custo">Custo unitário (R$)</label>
+      <input type="text" inputmode="decimal" id="ajustar-custo">
+    </div>
+    <div class="form-field" style="margin-bottom:16px;">
+      <label for="ajustar-preco">Preço de venda unitário (R$)</label>
+      <input type="text" inputmode="decimal" id="ajustar-preco">
+    </div>
+    <p style="margin-bottom:16px; color:var(--gray-400); font-size:0.85rem;">Margem: <strong id="ajustar-margem">—</strong></p>
     <p id="ajustar-error" class="error-message" style="display:none;"></p>
     <div class="form-actions">
       <button type="button" class="btn btn-primary" id="ajustar-confirmar">Salvar</button>

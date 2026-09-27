@@ -61,7 +61,7 @@ function renderEstoqueTable(list) {
       '<td>' + preco + '</td>' +
       '<td>' + margem + '</td>' +
       '<td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + estoqueBaixo + '</td>' +
-      '<td class="row-actions"><button data-ajustar="' + p.id + '">Ajustar</button></td>' +
+      '<td class="row-actions"><button data-ajustar="' + p.id + '">Editar</button></td>' +
     '</tr>';
   }).join('');
 
@@ -111,13 +111,26 @@ document.getElementById('estoque-search').addEventListener('input', function (e)
 
 var produtoEmAjuste = null;
 
+function atualizarMargemPreviewAjuste() {
+  var custo = toNumberEstoque(document.getElementById('ajustar-custo').value);
+  var preco = toNumberEstoque(document.getElementById('ajustar-preco').value);
+  var margem = calcularMargemPercentualEstoque(custo, preco);
+  document.getElementById('ajustar-margem').textContent = formatarMargemEstoque(margem);
+}
+
 function abrirModalAjustar(produto) {
   produtoEmAjuste = produto;
   document.getElementById('ajustar-produto-nome').textContent = produto.nome_produto;
   document.getElementById('ajustar-quantidade').value = produto.quantidade_estoque || 0;
+  document.getElementById('ajustar-custo').value = produto.preco_custo != null ? produto.preco_custo : '';
+  document.getElementById('ajustar-preco').value = produto.preco_unitario != null ? produto.preco_unitario : '';
+  atualizarMargemPreviewAjuste();
   document.getElementById('ajustar-error').style.display = 'none';
   document.getElementById('modal-ajustar-estoque').classList.add('open');
 }
+
+document.getElementById('ajustar-custo').addEventListener('input', atualizarMargemPreviewAjuste);
+document.getElementById('ajustar-preco').addEventListener('input', atualizarMargemPreviewAjuste);
 
 function fecharModalAjustar() {
   document.getElementById('modal-ajustar-estoque').classList.remove('open');
@@ -140,13 +153,29 @@ if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async fun
     return;
   }
 
+  var custoStr = document.getElementById('ajustar-custo').value.trim();
+  var precoStr = document.getElementById('ajustar-preco').value.trim();
+  var novoCusto = custoStr ? toNumberEstoque(custoStr) : null;
+  var novoPreco = precoStr ? toNumberEstoque(precoStr) : null;
+
+  if (novoCusto != null && novoCusto < 0) {
+    errorEl.textContent = 'O custo não pode ser negativo.';
+    errorEl.style.display = 'block';
+    return;
+  }
+  if (novoPreco != null && novoPreco < 0) {
+    errorEl.textContent = 'O preço de venda não pode ser negativo.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
   var btn = this;
   btn.disabled = true;
   btn.textContent = 'Salvando...';
 
   var { error } = await supabaseClient
     .from('produtos_catalogo')
-    .update({ quantidade_estoque: novaQuantidade })
+    .update({ quantidade_estoque: novaQuantidade, preco_custo: novoCusto, preco_unitario: novoPreco })
     .eq('id', produtoEmAjuste.id);
 
   btn.disabled = false;
