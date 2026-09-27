@@ -74,18 +74,27 @@ function renderEstoqueTable(list) {
   });
 }
 
+function ordenarPorCodigoEstoque(list) {
+  return list.slice().sort(function (a, b) {
+    var codA = a.codigo_produto, codB = b.codigo_produto;
+    if (!codA && !codB) return 0;
+    if (!codA) return 1;
+    if (!codB) return -1;
+    return codA.localeCompare(codB, 'pt-BR', { numeric: true, sensitivity: 'base' });
+  });
+}
+
 async function loadProdutosEstoque() {
   var { data, error } = await supabaseClient
     .from('produtos_catalogo')
-    .select('*')
-    .order('nome_produto', { ascending: true });
+    .select('*');
 
   if (error) {
     showToast('Erro ao carregar estoque: ' + error.message, 'error');
     return;
   }
 
-  allProdutosEstoque = data || [];
+  allProdutosEstoque = ordenarPorCodigoEstoque(data || []);
   renderEstoqueTable(allProdutosEstoque);
 }
 
