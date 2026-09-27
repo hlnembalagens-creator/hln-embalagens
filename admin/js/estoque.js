@@ -154,6 +154,79 @@ if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async fun
   loadProdutosEstoque();
 });
 
+/* ===================== IMPORTAÇÕES PENDENTES (automáticas, pasta Nfe) ===================== */
+
+var pendentesCache = [];
+var pendenteEmRevisaoId = null;
+
+async function loadPendentes() {
+  var { data, error } = await supabaseClient
+    .from('estoque_importacoes_pendentes')
+    .select('*')
+    .in('status', ['pendente', 'erro'])
+    .order('created_at', { ascending: true });
+
+  if (error) return;
+  pendentesCache = data || [];
+  renderPendentes();
+}
+
+function renderPendentes() {
+  var card = document.getElementById('card-pendentes');
+  var lista = document.getElementById('pendentes-lista');
+
+  if (!pendentesCache.length) {
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = 'block';
+
+  lista.innerHTML = pendentesCache.map(function (p) {
+    if (p.status === 'erro') {
+      return '<div class="form-actions" style="justify-content:space-between; border-bottom:1px solid var(--off-white); padding:10px 0;">' +
+        '<div><strong>' + p.nome_arquivo + '</strong><br><span style="color:var(--gray-400); font-size:0.85rem;">Falha na leitura: ' + (p.erro || 'erro desconhecido') + '</span></div>' +
+        '<button type="button" class="btn btn-outline" data-descartar-pendente="' + p.id + '">Descartar</button>' +
+      '</div>';
+    }
+    var forn = (p.dados && p.dados.fornecedor) || {};
+    var valor = (p.dados && p.dados.valor_total_documento) || 0;
+    return '<div class="form-actions" style="justify-content:space-between; border-bottom:1px solid var(--off-white); padding:10px 0;">' +
+      '<div><strong>' + p.nome_arquivo + '</strong><br><span style="color:var(--gray-400); font-size:0.85rem;">' +
+        (forn.razao_social || forn.nome_fantasia || 'Fornecedor não identificado') + ' — R$ ' + Number(valor).toFixed(2).replace('.', ',') +
+      '</span></div>' +
+      '<div>' +
+        '<button type="button" class="btn btn-outline" data-descartar-pendente="' + p.id + '">Descartar</button> ' +
+        '<button type="button" class="btn btn-primary" data-revisar-pendente="' + p.id + '">Revisar</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  lista.querySelectorAll('[data-revisar-pendente]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var pendente = pendentesCache.find(function (p) { return p.id === btn.dataset.revisarPendente; });
+      if (!pendente) return;
+      pendenteEmRevisaoId = pendente.id;
+      document.getElementById('import-status').style.display = 'none';
+      mostrarRevisao(pendente.dados);
+      document.getElementById('import-revisao').scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  lista.querySelectorAll('[data-descartar-pendente]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      btn.disabled = true;
+      await supabaseClient.from('estoque_importacoes_pendentes')
+        .update({ status: 'descartado', processado_em: new Date().toISOString(), processado_por: currentUserIdEstoque })
+        .eq('id', btn.dataset.descartarPendente);
+      if (pendenteEmRevisaoId === btn.dataset.descartarPendente) {
+        pendenteEmRevisaoId = null;
+        document.getElementById('import-revisao').style.display = 'none';
+      }
+      loadPendentes();
+    });
+  });
+}
+
 /* ===================== IMPORTAR NF/ROMANEIO ===================== */
 
 var dadosExtraidos = null;
@@ -339,6 +412,7 @@ document.getElementById('import-cancelar-btn').addEventListener('click', functio
   document.getElementById('import-arquivo').value = '';
   document.getElementById('import-status').style.display = 'none';
   dadosExtraidos = null;
+  pendenteEmRevisaoId = null;
 });
 
 function lerLinhasItens() {
@@ -471,6 +545,14 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
     });
     await supabaseClient.from('financeiro_saidas').insert(saidas);
 
+    if (pendenteEmRevisaoId) {
+      await supabaseClient.from('estoque_importacoes_pendentes')
+        .update({ status: 'processado', processado_em: new Date().toISOString(), processado_por: currentUserIdEstoque })
+        .eq('id', pendenteEmRevisaoId);
+      pendenteEmRevisaoId = null;
+      loadPendentes();
+    }
+
     showToast('Importação concluída: fornecedor, estoque e financeiro atualizados.', 'ok');
     document.getElementById('import-revisao').style.display = 'none';
     document.getElementById('import-arquivo').value = '';
@@ -557,4 +639,5 @@ document.getElementById('btn-exportar-lista-preco').addEventListener('click', fu
   currentUserIdEstoque = auth.session.user.id;
   renderHeadEstoque();
   loadProdutosEstoque();
+  if (isAdminEstoque) loadPendentes();
 })();

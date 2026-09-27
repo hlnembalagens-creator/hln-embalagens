@@ -36,8 +36,16 @@
 <main class="admin-main">
   <h1 class="admin-title">Estoque</h1>
 
+  <div class="admin-card" id="card-pendentes" data-role-admin style="display:none;">
+    <h2>Importações pendentes de revisão</h2>
+    <p style="color:var(--gray-400); margin-top:-10px; margin-bottom:16px; font-size:0.85rem;">
+      Lidos automaticamente da pasta Nfe (leitura 1x por dia). Confira e confirme cada um antes de entrar no estoque.
+    </p>
+    <div id="pendentes-lista"></div>
+  </div>
+
   <div class="admin-card" id="card-importar" data-role-admin>
-    <h2>Importar NF / Romaneio</h2>
+    <h2>Importar NF / Romaneio (manual)</h2>
     <p style="color:var(--gray-400); margin-top:-10px; margin-bottom:16px; font-size:0.85rem;">
       Envie o PDF da nota fiscal, romaneio ou pedido do fornecedor. O sistema lê os dados automaticamente
       e mostra tudo pra você conferir e corrigir antes de gravar no fornecedor, estoque e financeiro.

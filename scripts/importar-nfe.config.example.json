@@ -1,0 +1,5 @@
+{
+  "pastaNfe": "C:\\Users\\Luiz Gustavo\\OneDrive\\Documents\\HLN Embalagens\\Nfe",
+  "apiUrl": "https://hln-embalagens.vercel.app/api/importar-nfe-pendente",
+  "secret": "COLOQUE_AQUI_O_NFE_IMPORT_SECRET"
+}
