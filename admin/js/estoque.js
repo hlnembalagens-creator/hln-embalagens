@@ -23,16 +23,40 @@ function formatarMargemEstoque(margem) {
   return margem.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
 }
 
+// Etiquetas em rolo vêm em caixas fechadas — a quantidade de rolos por caixa
+// muda com a largura (primeiro número do "WWxLLL" no nome, ex: "ETQ TERMICA
+// 60X110 30M"). Só sabemos converter as larguras abaixo; outras larguras (ou
+// produtos que não são etiqueta) não mostram caixa, só a unidade.
+var ROLOS_POR_CAIXA_ETIQUETA = { 40: 60, 60: 33 };
+
+function larguraEtiquetaEstoque(produto) {
+  var nome = (produto.nome_produto || '').toUpperCase();
+  if (nome.indexOf('ETQ') === -1 && nome.indexOf('ETIQUETA') === -1) return null;
+  var m = nome.match(/(\d{2,3})\s*X\s*\d/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+function formatarCaixasEstoque(produto) {
+  var largura = larguraEtiquetaEstoque(produto);
+  var rolosPorCaixa = largura != null ? ROLOS_POR_CAIXA_ETIQUETA[largura] : null;
+  if (!rolosPorCaixa) return '—';
+
+  var qtd = produto.quantidade_estoque || 0;
+  var caixas = Math.floor(qtd / rolosPorCaixa);
+  var resto = qtd % rolosPorCaixa;
+  return caixas + ' cx' + (resto ? ' + ' + resto : '');
+}
+
 function renderHeadEstoque() {
   var thead = document.getElementById('estoque-thead');
   thead.innerHTML = isAdminEstoque
-    ? '<tr><th>Nome</th><th>Código</th><th>NCM</th><th>Custo Unit.</th><th>Venda Unit.</th><th>Margem</th><th>Estoque</th><th></th></tr>'
-    : '<tr><th>Nome</th><th>Estoque</th></tr>';
+    ? '<tr><th>Nome</th><th>Código</th><th>NCM</th><th>Custo Unit.</th><th>Venda Unit.</th><th>Margem</th><th>Estoque</th><th>Caixas</th><th></th></tr>'
+    : '<tr><th>Nome</th><th>Estoque</th><th>Caixas</th></tr>';
 }
 
 function renderEstoqueTable(list) {
   var tbody = document.getElementById('estoque-tbody');
-  var colspan = isAdminEstoque ? 8 : 2;
+  var colspan = isAdminEstoque ? 9 : 3;
   if (!list.length) {
     tbody.innerHTML = '<tr><td colspan="' + colspan + '">Nenhum produto cadastrado ainda.</td></tr>';
     return;
@@ -40,7 +64,7 @@ function renderEstoqueTable(list) {
 
   if (!isAdminEstoque) {
     tbody.innerHTML = list.map(function (p) {
-      return '<tr><td>' + p.nome_produto + '</td><td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + '</td></tr>';
+      return '<tr><td>' + p.nome_produto + '</td><td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + '</td><td>' + formatarCaixasEstoque(p) + '</td></tr>';
     }).join('');
     return;
   }
@@ -61,6 +85,7 @@ function renderEstoqueTable(list) {
       '<td>' + preco + '</td>' +
       '<td>' + margem + '</td>' +
       '<td>' + (p.quantidade_estoque || 0).toLocaleString('pt-BR') + estoqueBaixo + '</td>' +
+      '<td>' + formatarCaixasEstoque(p) + '</td>' +
       '<td class="row-actions"><button data-ajustar="' + p.id + '">Editar</button> <button data-excluir-produto="' + p.id + '" style="color:#a92323;">Excluir</button></td>' +
     '</tr>';
   }).join('');
