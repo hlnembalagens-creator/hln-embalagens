@@ -37,6 +37,20 @@
   <h1 class="admin-title">Clientes</h1>
 
   <div class="admin-card">
+    <h2>Pesquisar cliente</h2>
+    <div class="form-grid" style="align-items:end;">
+      <div class="form-field span-2">
+        <label for="cliente-search">Nome ou CNPJ/CPF</label>
+        <input type="text" id="cliente-search" placeholder="Digite pra buscar...">
+      </div>
+      <div class="form-field">
+        <label>&nbsp;</label>
+        <button type="button" class="btn btn-primary" id="btn-pesquisar-clientes">Pesquisar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-card">
     <h2 id="form-title">Novo cliente</h2>
     <form id="cliente-form">
       <input type="hidden" id="cliente-id">
@@ -187,10 +201,6 @@
   </div>
 
   <div class="admin-card">
-    <div class="form-actions" style="margin-top:0; margin-bottom:16px; align-items:center;">
-      <input type="text" id="cliente-search" class="table-search" style="margin-bottom:0;" placeholder="Buscar por nome, CNPJ...">
-      <button type="button" class="btn btn-primary" id="btn-pesquisar-clientes">Pesquisar</button>
-    </div>
     <div class="table-scroll">
       <table class="admin-table">
         <thead>
