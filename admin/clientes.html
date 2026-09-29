@@ -168,21 +168,25 @@
 
       <p id="cliente-error" class="error-message" style="display:none;"></p>
 
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" id="cliente-save-btn">Salvar cliente</button>
-        <button type="button" class="btn btn-outline" id="cliente-cancel-btn">Limpar / novo</button>
+      <div class="form-actions no-print" style="justify-content:space-between; flex-wrap:wrap; gap:20px;">
+        <div style="display:flex; gap:10px;">
+          <button type="submit" class="btn btn-primary" id="cliente-save-btn">Salvar cliente</button>
+          <button type="button" class="btn btn-outline" id="cliente-cancel-btn">Limpar / novo</button>
+        </div>
+        <div style="border:1px solid #d7ddea; border-radius:12px; padding:12px 16px; display:flex; flex-direction:column; gap:8px;">
+          <span style="font-family:var(--font-heading); font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.03em; color:var(--gray-400);">Cadastro em massa de clientes</span>
+          <div style="display:flex; gap:10px;">
+            <button type="button" class="btn btn-outline" id="btn-exportar-clientes">Exportar Excel</button>
+            <button type="button" class="btn btn-outline" id="btn-importar-clientes">Importar Excel</button>
+            <input type="file" id="input-importar-clientes" accept=".xlsx,.xls,.csv" style="display:none;">
+          </div>
+        </div>
       </div>
+      <p id="importar-clientes-status" style="display:none; margin-top:12px; font-size:0.85rem;"></p>
     </form>
   </div>
 
   <div class="admin-card">
-    <h2>Clientes cadastrados</h2>
-    <div class="form-actions no-print" style="margin-bottom:14px;">
-      <button type="button" class="btn btn-outline" id="btn-exportar-clientes">Exportar Excel</button>
-      <button type="button" class="btn btn-outline" id="btn-importar-clientes">Importar Excel</button>
-      <input type="file" id="input-importar-clientes" accept=".xlsx,.xls,.csv" style="display:none;">
-    </div>
-    <p id="importar-clientes-status" style="display:none; margin-bottom:14px; font-size:0.85rem;"></p>
     <input type="text" id="cliente-search" class="table-search" placeholder="Buscar por nome, CNPJ...">
     <div class="table-scroll">
       <table class="admin-table">
