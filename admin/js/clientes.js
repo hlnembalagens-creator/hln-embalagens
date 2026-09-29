@@ -149,11 +149,18 @@ function renderClientesTable(list) {
       '<td>' + contato + '</td>' +
       '<td class="row-actions">' +
         '<button data-historico="' + c.id + '">Histórico</button>' +
+        (c.eh_fornecedor ? '' : '<button data-pedido="' + c.id + '">Pedido</button>') +
         '<button data-edit="' + c.id + '">Editar</button>' +
         (currentUserRole !== 'admin1' ? '<button data-delete="' + c.id + '" class="danger">Excluir</button>' : '') +
       '</td>' +
     '</tr>';
   }).join('');
+
+  tbody.querySelectorAll('[data-pedido]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      location.href = 'pedido.html?cliente=' + btn.dataset.pedido;
+    });
+  });
 
   tbody.querySelectorAll('[data-historico]').forEach(function (btn) {
     btn.addEventListener('click', function () {

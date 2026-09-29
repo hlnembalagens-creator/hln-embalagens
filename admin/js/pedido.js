@@ -1351,7 +1351,13 @@ function renderPedidoPagoStatus() {
 
   var params = new URLSearchParams(location.search);
   var editarId = params.get('editar');
+  var clienteId = params.get('cliente');
   if (editarId) {
     iniciarEdicaoPedido(editarId);
+  } else if (clienteId) {
+    // Veio do botão "Pedido" na busca de Clientes — já chega com o cliente selecionado.
+    var selectCliente = document.getElementById('select-cliente');
+    selectCliente.value = clienteId;
+    selectCliente.dispatchEvent(new Event('change'));
   }
 })();
