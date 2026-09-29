@@ -113,13 +113,20 @@ async function loadClientes() {
     cnpjDuplicadoMap[cnpj] = (cnpjDuplicadoMap[cnpj] || 0) + 1;
   });
 
-  renderClientesTable(allClientes);
+  // Depois de editar/excluir/importar, mantém a pesquisa atual em vez de
+  // voltar pro placeholder vazio — só mostra o placeholder se não tem termo.
+  var termoAtual = document.getElementById('cliente-search').value.trim();
+  if (termoAtual) { executarBuscaClientes(); } else { renderClientesPlaceholder(); }
+}
+
+function renderClientesPlaceholder() {
+  document.getElementById('clientes-tbody').innerHTML = '<tr><td colspan="5">Digite um nome ou CNPJ acima e clique em Pesquisar.</td></tr>';
 }
 
 function renderClientesTable(list) {
   var tbody = document.getElementById('clientes-tbody');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="5">Nenhum cliente cadastrado ainda.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5">Nenhum cliente encontrado com esse termo.</td></tr>';
     return;
   }
 
@@ -289,14 +296,20 @@ if (mergeSoExcluirBtn) mergeSoExcluirBtn.addEventListener('click', async functio
   loadClientes();
 });
 
-document.getElementById('cliente-search').addEventListener('input', function (e) {
-  var term = e.target.value.toLowerCase();
+function executarBuscaClientes() {
+  var term = document.getElementById('cliente-search').value.trim().toLowerCase();
+  if (!term) { renderClientesPlaceholder(); return; }
   var filtered = allClientes.filter(function (c) {
     return (c.razao_social || '').toLowerCase().includes(term) ||
       (c.nome_fantasia || '').toLowerCase().includes(term) ||
       (c.cnpj_cpf || '').toLowerCase().includes(term);
   });
   renderClientesTable(filtered);
+}
+
+document.getElementById('btn-pesquisar-clientes').addEventListener('click', executarBuscaClientes);
+document.getElementById('cliente-search').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') { e.preventDefault(); executarBuscaClientes(); }
 });
 
 /* ===================== EXPORTAR / IMPORTAR EXCEL ===================== */
