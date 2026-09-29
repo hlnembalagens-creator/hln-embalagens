@@ -45,12 +45,15 @@
       </div>
       <div class="form-field">
         <label>&nbsp;</label>
-        <button type="button" class="btn btn-primary" id="btn-pesquisar-clientes">Pesquisar</button>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary" id="btn-pesquisar-clientes">Pesquisar</button>
+          <button type="button" class="btn btn-outline" id="btn-cadastrar-cliente">Cadastrar cliente</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="admin-card">
+  <div class="admin-card" id="card-cliente-form" style="display:none;">
     <h2 id="form-title">Novo cliente</h2>
     <form id="cliente-form">
       <input type="hidden" id="cliente-id">

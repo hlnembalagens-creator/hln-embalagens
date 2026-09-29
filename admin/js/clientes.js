@@ -31,6 +31,11 @@ function setFormValues(cliente) {
   if (naoContabilizarEl) naoContabilizarEl.checked = !!(cliente && cliente.nao_contabilizar);
 }
 
+function mostrarFormularioCliente() {
+  document.getElementById('card-cliente-form').style.display = 'block';
+  document.getElementById('card-cliente-form').scrollIntoView({ behavior: 'smooth' });
+}
+
 function resetForm() {
   document.getElementById('cliente-form').reset();
   document.getElementById('cliente-id').value = '';
@@ -167,7 +172,7 @@ function renderClientesTable(list) {
       document.getElementById('cliente-id').value = cliente.id;
       setFormValues(cliente);
       document.getElementById('form-title').textContent = 'Editar cliente';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      mostrarFormularioCliente();
     });
   });
 
@@ -495,6 +500,11 @@ document.getElementById('cliente-form').addEventListener('submit', async functio
 });
 
 document.getElementById('cliente-cancel-btn').addEventListener('click', resetForm);
+
+document.getElementById('btn-cadastrar-cliente').addEventListener('click', function () {
+  resetForm();
+  mostrarFormularioCliente();
+});
 
 (async function () {
   var auth = await window.ADMIN_AUTH_READY;
