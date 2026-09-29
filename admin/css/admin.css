@@ -633,3 +633,42 @@ body.admin-body {
 .heatmap-count { display: block; font-size: 0.72rem; opacity: 0.9; }
 
 .dashboard-empty { color: var(--gray-400); font-size: 0.88rem; }
+
+/* Cartões de KPI (números grandes no topo, estilo BI) */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.kpi-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 22px;
+  border-top: 4px solid var(--blue-accent);
+}
+.kpi-card.kpi-accent-green { border-top-color: #1fa855; }
+.kpi-card.kpi-accent-amber { border-top-color: #e0a800; }
+.kpi-card.kpi-accent-navy { border-top-color: var(--navy-900); }
+.kpi-label {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gray-400);
+  margin-bottom: 8px;
+}
+.kpi-value {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1.85rem;
+  color: var(--navy-900);
+  line-height: 1.1;
+}
+.kpi-sub { font-size: 0.78rem; color: var(--gray-400); margin-top: 6px; }
+
+/* Área dos gráficos (Chart.js) */
+.chart-canvas-wrap { position: relative; height: 260px; }
+.chart-canvas-wrap-donut { height: 260px; max-width: 320px; margin: 0 auto; }

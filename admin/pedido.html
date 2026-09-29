@@ -74,7 +74,10 @@
       <span>Tipo</span><span>Qtd.</span><span>Peso</span><span>Fator</span><span>Vl. Total</span><span></span>
     </div>
     <div id="vacuo-items"></div>
-    <button type="button" class="btn btn-outline" id="btn-add-vacuo" style="margin-top:14px;">+ Adicionar item de vácuo</button>
+    <div class="form-actions" style="margin-top:14px;">
+      <button type="button" class="btn btn-outline" id="btn-add-vacuo">+ Adicionar item de vácuo</button>
+      <button type="button" class="btn btn-outline" id="btn-open-selecionar-vacuo">+ Selecionar do estoque</button>
+    </div>
   </div>
 
   <!-- ITENS GERAIS -->
@@ -264,6 +267,35 @@
     <div class="form-actions">
       <button type="button" class="btn btn-primary" id="modal-btn-adicionar">Adicionar ao pedido</button>
       <button type="button" class="btn btn-outline" id="modal-btn-cancelar">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SELECIONAR EMBALAGEM DO ESTOQUE (vácuo) -->
+<div class="modal-overlay no-print" id="modal-selecionar-vacuo">
+  <div class="modal-box">
+    <h3>Selecionar Embalagem do Estoque</h3>
+    <div class="form-field" style="margin-bottom:14px;">
+      <label for="select-vacuo-categoria">Categoria</label>
+      <select id="select-vacuo-categoria">
+        <option value="">— Selecione —</option>
+      </select>
+    </div>
+    <div class="form-field" style="margin-bottom:14px;">
+      <label for="select-vacuo-produto">Medida</label>
+      <select id="select-vacuo-produto">
+        <option value="">— Escolha a categoria primeiro —</option>
+      </select>
+      <span class="hint" id="select-vacuo-estoque-readout"></span>
+    </div>
+    <div class="form-field" style="margin-bottom:14px; max-width:160px;">
+      <label for="select-vacuo-quantidade">Quantidade *</label>
+      <input type="number" id="select-vacuo-quantidade" step="1" min="0">
+    </div>
+    <p id="selecionar-vacuo-error" class="error-message" style="display:none;"></p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" id="selecionar-vacuo-btn-adicionar">Adicionar ao pedido</button>
+      <button type="button" class="btn btn-outline" id="selecionar-vacuo-btn-cancelar">Cancelar</button>
     </div>
   </div>
 </div>

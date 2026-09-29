@@ -36,6 +36,39 @@
 <main class="admin-main">
   <h1 class="admin-title">Dashboard</h1>
 
+  <div class="kpi-grid" id="kpi-grid">
+    <div class="kpi-card kpi-accent-green">
+      <div class="kpi-label">Faturamento do mês</div>
+      <div class="kpi-value" id="kpi-faturamento">—</div>
+      <div class="kpi-sub" id="kpi-faturamento-sub"></div>
+    </div>
+    <div class="kpi-card kpi-accent-navy">
+      <div class="kpi-label">Pedidos no mês</div>
+      <div class="kpi-value" id="kpi-pedidos">—</div>
+    </div>
+    <div class="kpi-card kpi-accent-amber">
+      <div class="kpi-label">Ticket médio (mês)</div>
+      <div class="kpi-value" id="kpi-ticket">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Clientes ativos (30 dias)</div>
+      <div class="kpi-value" id="kpi-clientes-ativos">—</div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid dashboard-grid-2" style="margin-bottom:20px;">
+    <div class="admin-card">
+      <div class="dashboard-card-title">Vendas por mês</div>
+      <div class="dashboard-card-hint">Últimos 6 meses, pedidos confirmados.</div>
+      <div class="chart-canvas-wrap"><canvas id="chart-vendas-mes"></canvas></div>
+    </div>
+    <div class="admin-card">
+      <div class="dashboard-card-title">Recebido x Pendente</div>
+      <div class="dashboard-card-hint">Valor total de todos os pedidos confirmados, por status de pagamento.</div>
+      <div class="chart-canvas-wrap chart-canvas-wrap-donut"><canvas id="chart-pago-pendente"></canvas></div>
+    </div>
+  </div>
+
   <div class="dashboard-grid dashboard-grid-2" style="margin-bottom:20px;">
     <div class="admin-card">
       <div class="dashboard-card-title">Top 5 clientes</div>
@@ -79,6 +112,7 @@
 <div id="toast-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="js/admin-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>

@@ -22,33 +22,115 @@ function semaforoClasse(dias) {
   return 'semaforo-vermelho';
 }
 
-/* ===================== TOP CLIENTES + SEMÁFORO ===================== */
+/* ===================== BUSCA COMPARTILHADA ===================== */
 
-async function carregarClientesRanking(vendedorId) {
+// Uma única busca de pedidos confirmados, reaproveitada pelos KPIs, gráficos
+// e rankings — evita repetir a mesma query várias vezes na mesma tela.
+async function buscarPedidosDashboard(vendedorId) {
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('cliente_id, vendedor_id, valor_total_a_pagar, created_at, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor)')
+    .select('cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor)')
     .eq('tipo', 'pedido')
     .order('created_at', { ascending: false });
 
-  var topEl = document.getElementById('top-clientes');
-  var semaforoTbody = document.getElementById('semaforo-tbody');
-  var heatmapEl = document.getElementById('heatmap-uf');
-
-  if (error) {
-    topEl.innerHTML = '<p class="dashboard-empty">Erro ao carregar: ' + error.message + '</p>';
-    semaforoTbody.innerHTML = '<tr><td colspan="5">Erro ao carregar.</td></tr>';
-    heatmapEl.innerHTML = '<p class="dashboard-empty">Erro ao carregar.</p>';
-    return;
-  }
+  if (error) return { error: error };
 
   // Cadastros marcados como fornecedor (ex: Altisvac) são pedidos feitos por nós a
-  // eles, não vendas — não entram nos rankings. Vendedor só enxerga as vendas dele.
+  // eles, não vendas — não entram nos números. Vendedor só enxerga as vendas dele.
   var pedidos = (data || []).filter(function (p) {
     if (!p.cliente_id || !p.clientes || p.clientes.eh_fornecedor) return false;
     if (vendedorId && p.vendedor_id !== vendedorId) return false;
     return true;
   });
+
+  return { pedidos: pedidos };
+}
+
+/* ===================== KPIS + GRÁFICOS ===================== */
+
+function mesmoMes(dataIso, ref) {
+  var d = new Date(dataIso);
+  return d.getFullYear() === ref.getFullYear() && d.getMonth() === ref.getMonth();
+}
+
+async function carregarKpisEGraficos(pedidos) {
+  var agora = new Date();
+  var pedidosMes = pedidos.filter(function (p) { return mesmoMes(p.created_at, agora); });
+
+  var faturamentoMes = pedidosMes.reduce(function (acc, p) { return acc + (parseFloat(p.valor_total_a_pagar) || 0); }, 0);
+  var ticketMedio = pedidosMes.length ? faturamentoMes / pedidosMes.length : 0;
+
+  document.getElementById('kpi-faturamento').textContent = formatBRLDash(faturamentoMes);
+  document.getElementById('kpi-faturamento-sub').textContent = pedidosMes.length + ' pedido(s) este mês';
+  document.getElementById('kpi-pedidos').textContent = pedidosMes.length.toLocaleString('pt-BR');
+  document.getElementById('kpi-ticket').textContent = formatBRLDash(ticketMedio);
+
+  // Clientes ativos = distintos com pelo menos 1 compra nos últimos 30 dias
+  var clientesRecentes = {};
+  pedidos.forEach(function (p) {
+    if (diasDesde(p.created_at) <= 30) clientesRecentes[p.cliente_id] = true;
+  });
+  document.getElementById('kpi-clientes-ativos').textContent = Object.keys(clientesRecentes).length.toLocaleString('pt-BR');
+
+  if (typeof Chart === 'undefined') return; // CDN bloqueado/offline — KPIs continuam funcionando sem os gráficos.
+
+  // Gráfico de barras — últimos 6 meses (incluindo meses sem venda, com 0)
+  var meses = [];
+  for (var i = 5; i >= 0; i--) {
+    var ref = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+    meses.push({ ref: ref, label: ref.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }), total: 0 });
+  }
+  pedidos.forEach(function (p) {
+    var d = new Date(p.created_at);
+    var mesObj = meses.find(function (m) { return m.ref.getFullYear() === d.getFullYear() && m.ref.getMonth() === d.getMonth(); });
+    if (mesObj) mesObj.total += parseFloat(p.valor_total_a_pagar) || 0;
+  });
+
+  var ctxMes = document.getElementById('chart-vendas-mes');
+  if (ctxMes) {
+    new Chart(ctxMes, {
+      type: 'bar',
+      data: {
+        labels: meses.map(function (m) { return m.label; }),
+        datasets: [{ data: meses.map(function (m) { return m.total; }), backgroundColor: '#2f7de1', borderRadius: 6, maxBarThickness: 46 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (ctx) { return formatBRLDash(ctx.parsed.y); } } } },
+        scales: { y: { ticks: { callback: function (v) { return 'R$ ' + v.toLocaleString('pt-BR'); } }, grid: { color: '#eef1f5' } }, x: { grid: { display: false } } }
+      }
+    });
+  }
+
+  // Donut — total recebido (pago) x pendente, todos os pedidos confirmados
+  var totalPago = 0, totalPendente = 0;
+  pedidos.forEach(function (p) {
+    var v = parseFloat(p.valor_total_a_pagar) || 0;
+    if (p.pago) totalPago += v; else totalPendente += v;
+  });
+
+  var ctxPago = document.getElementById('chart-pago-pendente');
+  if (ctxPago) {
+    new Chart(ctxPago, {
+      type: 'doughnut',
+      data: {
+        labels: ['Recebido', 'Pendente'],
+        datasets: [{ data: [totalPago, totalPendente], backgroundColor: ['#1fa855', '#e0a800'], borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '68%',
+        plugins: { legend: { position: 'bottom', labels: { font: { family: 'Open Sans' } } }, tooltip: { callbacks: { label: function (ctx) { return ctx.label + ': ' + formatBRLDash(ctx.parsed); } } } }
+      }
+    });
+  }
+}
+
+/* ===================== TOP CLIENTES + SEMÁFORO ===================== */
+
+function renderClientesRanking(pedidos) {
+  var topEl = document.getElementById('top-clientes');
+  var semaforoTbody = document.getElementById('semaforo-tbody');
+  var heatmapEl = document.getElementById('heatmap-uf');
 
   if (!pedidos.length) {
     topEl.innerHTML = '<p class="dashboard-empty">Nenhum pedido confirmado ainda.</p>';
@@ -200,6 +282,13 @@ async function carregarProdutosRanking(vendedorId) {
     document.querySelector('.admin-title').insertAdjacentElement('afterend', aviso);
   }
 
-  carregarClientesRanking(vendedorId);
+  var resultado = await buscarPedidosDashboard(vendedorId);
+  if (resultado.error) {
+    document.getElementById('top-clientes').innerHTML = '<p class="dashboard-empty">Erro ao carregar: ' + resultado.error.message + '</p>';
+  } else {
+    renderClientesRanking(resultado.pedidos);
+    carregarKpisEGraficos(resultado.pedidos);
+  }
+
   carregarProdutosRanking(vendedorId);
 })();

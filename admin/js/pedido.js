@@ -242,6 +242,132 @@ document.getElementById('btn-add-vacuo').addEventListener('click', function () {
   renderVacuoRow(item);
 });
 
+/* ===================== SELECIONAR EMBALAGEM DO ESTOQUE (vácuo) ===================== */
+
+// Categorias de embalagem que ficam no estoque — usadas tanto pra filtrar o
+// combo de "Itens — Embalagem a Vácuo" (só essas entram aqui) quanto pra
+// excluir do combo de "Itens — Etiquetas / Equipamentos" (etiqueta/bobina PDV
+// ficam lá, embalagem nunca). O "match" procura no nome do produto no estoque
+// (que está em CAIXA ALTA); o "label" é o valor gravado em material, no mesmo
+// padrão Title Case já usado historicamente no formulário de pedido.
+var CATEGORIAS_EMBALAGEM_VACUO = [
+  { label: 'Nylon Poli', match: 'NYLON POLI' },
+  { label: 'MRP', match: 'MRP' },
+  { label: 'Termoencolhível', match: 'TERMOENCOLHIVEL' },
+  { label: 'Saco PP', match: 'SACO PP' },
+  { label: 'Saco PE', match: 'SACO PE' }
+];
+
+function categoriaEmbalagemDoProduto(nomeProduto) {
+  var nome = (nomeProduto || '').toUpperCase();
+  for (var i = 0; i < CATEGORIAS_EMBALAGEM_VACUO.length; i++) {
+    if (nome.indexOf(CATEGORIAS_EMBALAGEM_VACUO[i].match) !== -1) return CATEGORIAS_EMBALAGEM_VACUO[i];
+  }
+  return null;
+}
+
+// Tira as medidas (largura, comprimento, espessura, em cm/µ) do nome do produto
+// do estoque — "NYLON POLI 15X20X10" ou "SACO A VÁCUO - NYLON POLI 0,20x0,22x120"
+// (a notação "0,20" de metro vira "20" antes de extrair os números).
+function extrairMedidasVacuoDoNome(nomeProduto) {
+  var limpo = (nomeProduto || '').replace(/0,(?=\d)/g, '');
+  var nums = (limpo.match(/\d+/g) || []).map(function (n) { return parseInt(n, 10); });
+  return { largura: nums[0] || 0, comprimento: nums[1] || 0, espessura: nums[2] || 0 };
+}
+
+function openSelecionarVacuoModal() {
+  document.getElementById('select-vacuo-categoria').value = '';
+  document.getElementById('select-vacuo-produto').innerHTML = '<option value="">— Escolha a categoria primeiro —</option>';
+  document.getElementById('select-vacuo-estoque-readout').textContent = '';
+  document.getElementById('select-vacuo-quantidade').value = '';
+  document.getElementById('selecionar-vacuo-error').style.display = 'none';
+  document.getElementById('modal-selecionar-vacuo').classList.add('open');
+}
+function closeSelecionarVacuoModal() {
+  document.getElementById('modal-selecionar-vacuo').classList.remove('open');
+}
+
+document.getElementById('btn-open-selecionar-vacuo').addEventListener('click', async function () {
+  await loadCatalogoParaSelecionar();
+  var categoriaSelect = document.getElementById('select-vacuo-categoria');
+  categoriaSelect.innerHTML = '<option value="">— Selecione —</option>' + CATEGORIAS_EMBALAGEM_VACUO.map(function (c) {
+    return '<option value="' + c.label + '">' + c.label + '</option>';
+  }).join('');
+  openSelecionarVacuoModal();
+});
+document.getElementById('selecionar-vacuo-btn-cancelar').addEventListener('click', closeSelecionarVacuoModal);
+
+document.getElementById('select-vacuo-categoria').addEventListener('change', function (e) {
+  var produtoSelect = document.getElementById('select-vacuo-produto');
+  var categoria = CATEGORIAS_EMBALAGEM_VACUO.find(function (c) { return c.label === e.target.value; });
+
+  if (!categoria) {
+    produtoSelect.innerHTML = '<option value="">— Escolha a categoria primeiro —</option>';
+    return;
+  }
+
+  var produtos = catalogoCache.filter(function (p) {
+    var c = categoriaEmbalagemDoProduto(p.nome_produto);
+    return c && c.label === categoria.label;
+  });
+
+  if (!produtos.length) {
+    produtoSelect.innerHTML = '<option value="">Nenhuma medida cadastrada nessa categoria</option>';
+    return;
+  }
+
+  produtoSelect.innerHTML = '<option value="">— Selecione —</option>' + produtos.map(function (p) {
+    return '<option value="' + p.id + '">' + p.nome_produto + '</option>';
+  }).join('');
+  document.getElementById('select-vacuo-estoque-readout').textContent = '';
+});
+
+document.getElementById('select-vacuo-produto').addEventListener('change', function (e) {
+  var produto = catalogoCache.find(function (p) { return p.id === e.target.value; });
+  document.getElementById('select-vacuo-estoque-readout').textContent = produto
+    ? 'Em estoque: ' + (produto.quantidade_estoque || 0).toLocaleString('pt-BR') + ' un.'
+    : '';
+});
+
+document.getElementById('selecionar-vacuo-btn-adicionar').addEventListener('click', function () {
+  var errorEl = document.getElementById('selecionar-vacuo-error');
+  errorEl.style.display = 'none';
+
+  var categoria = CATEGORIAS_EMBALAGEM_VACUO.find(function (c) { return c.label === document.getElementById('select-vacuo-categoria').value; });
+  if (!categoria) {
+    errorEl.textContent = 'Selecione a categoria.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  var produtoId = document.getElementById('select-vacuo-produto').value;
+  var produto = catalogoCache.find(function (p) { return p.id === produtoId; });
+  if (!produto) {
+    errorEl.textContent = 'Selecione a medida.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  var quantidade = toNumber(document.getElementById('select-vacuo-quantidade').value);
+  if (quantidade <= 0) {
+    errorEl.textContent = 'Informe a quantidade.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  var medidas = extrairMedidasVacuoDoNome(produto.nome_produto);
+  var item = {
+    _id: uid(), item: 'SACO A VÁCUO', material: categoria.label,
+    largura_m: medidas.largura / 100, comprimento_m: medidas.comprimento / 100,
+    espessura_micras: medidas.espessura, tipo: '', quantidade: quantidade,
+    taxa_preco_peso: fatorPadraoVacuo
+  };
+  vacuoItems.push(item);
+  renderVacuoRow(item);
+  updateTotals();
+  closeSelecionarVacuoModal();
+});
+
 /* ===================== ITENS GERAIS ===================== */
 
 function renderGeraisItems() {
@@ -382,12 +508,16 @@ async function loadCatalogoParaSelecionar() {
   if (error) return;
   catalogoCache = data || [];
 
+  // Embalagem (vácuo) só entra pelo combo de Itens — Embalagem a Vácuo, nunca
+  // aqui em Etiquetas/Equipamentos — evita listar as mesmas medidas nos 2 lugares.
+  var produtosEtiquetas = catalogoCache.filter(function (p) { return !categoriaEmbalagemDoProduto(p.nome_produto); });
+
   var select = document.getElementById('select-produto-existente');
-  if (!catalogoCache.length) {
+  if (!produtosEtiquetas.length) {
     select.innerHTML = '<option value="">Nenhum produto cadastrado ainda</option>';
     return;
   }
-  select.innerHTML = '<option value="">— Selecione —</option>' + catalogoCache.map(function (p) {
+  select.innerHTML = '<option value="">— Selecione —</option>' + produtosEtiquetas.map(function (p) {
     return '<option value="' + p.id + '">' + p.nome_produto + '</option>';
   }).join('');
 }
