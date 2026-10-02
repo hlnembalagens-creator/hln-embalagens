@@ -208,8 +208,13 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
       ? '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem; color:#a92323; border-color:#a92323;" data-excluir="' + pedido.id + '">Excluir</button>'
       : '';
 
+    var botaoExportarAltisvac = (typeof ehClienteAltisvac === 'function' && ehClienteAltisvac(pedido.clientes) && (pedido.pedido_itens_vacuo || []).length)
+      ? '<button type="button" class="btn btn-primary" style="padding:6px 12px; font-size:0.78rem;" data-exportar-altisvac="' + pedido.id + '">Exportar planilha Altisvac</button>'
+      : '';
+
     var acoes = '<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" data-editar="' + pedido.id + '">Editar</button>' +
+      botaoExportarAltisvac +
       acoesEspecificas +
       botaoExcluir +
     '</div>';
@@ -232,6 +237,25 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
         if (modal) modal.classList.remove('open');
       } else {
         location.href = 'pedido.html?editar=' + id;
+      }
+    });
+  });
+
+  conteudo.querySelectorAll('[data-exportar-altisvac]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var pedido = data.find(function (p) { return p.id === btn.dataset.exportarAltisvac; });
+      if (!pedido) return;
+      var itens = (pedido.pedido_itens_vacuo || []).slice().sort(function (a, b) { return a.ordem - b.ordem; });
+      btn.disabled = true;
+      var textoOriginal = btn.textContent;
+      btn.textContent = 'Gerando...';
+      try {
+        await exportarPlanilhaAltisvac(itens);
+      } catch (err) {
+        alert(err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
       }
     });
   });

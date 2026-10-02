@@ -107,9 +107,33 @@ async function loadClientesSelect() {
   }).join('');
 }
 
+// Pedido pra Altisvac sai numa planilha padrão — o botão de exportar só aparece
+// quando o cliente selecionado é a Altisvac.
+function atualizarModoAltisvac() {
+  var ehAltisvac = ehClienteAltisvac(selectedCliente);
+  document.getElementById('btn-exportar-altisvac').style.display = ehAltisvac ? '' : 'none';
+  document.getElementById('aviso-altisvac').style.display = ehAltisvac ? 'block' : 'none';
+}
+
+document.getElementById('btn-exportar-altisvac').addEventListener('click', async function () {
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Gerando...';
+  try {
+    await exportarPlanilhaAltisvac(vacuoItems);
+    showToast('Planilha gerada. Confira o arquivo baixado.', 'ok');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Exportar planilha Altisvac';
+  }
+});
+
 document.getElementById('select-cliente').addEventListener('change', function (e) {
   var id = e.target.value;
   selectedCliente = clientesCache.find(function (c) { return c.id === id; }) || null;
+  atualizarModoAltisvac();
   var resumo = document.getElementById('cliente-resumo');
 
   if (!selectedCliente) {

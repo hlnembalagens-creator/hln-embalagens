@@ -77,7 +77,9 @@
     <div class="form-actions" style="margin-top:14px;">
       <button type="button" class="btn btn-outline" id="btn-add-vacuo">+ Adicionar item de vácuo</button>
       <button type="button" class="btn btn-outline" id="btn-open-selecionar-vacuo">+ Selecionar do estoque</button>
+      <button type="button" class="btn btn-primary" id="btn-exportar-altisvac" style="display:none;">Exportar planilha Altisvac</button>
     </div>
+    <p id="aviso-altisvac" style="display:none; margin-top:12px; padding:10px 14px; background:#e8f1fd; color:#1a4f95; border-radius:8px; font-size:0.85rem; font-weight:600;">Pedido pra Altisvac: preencha tipo, medida e quantidade (o Fator não vai na planilha). Depois de salvar, exporte no formato padrão pra enviar ao fabricante.</p>
   </div>
 
   <!-- ITENS GERAIS -->
@@ -395,6 +397,7 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
+<script src="js/altisvac-export.js"></script>
 <script src="js/historico.js"></script>
 <script src="js/calc-vacuo.js"></script>
 <script src="js/pedido.js"></script>

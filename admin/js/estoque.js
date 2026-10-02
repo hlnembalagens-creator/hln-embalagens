@@ -491,8 +491,11 @@ function normalizarNomeProdutoEstoque(s) {
 // removido antes de extrair, pra unificar os dois jeitos de escrever.
 function extrairDimensoesEstoque(nome) {
   var limpo = (nome || '').replace(/0,(?=\d)/g, '');
-  var nums = limpo.match(/\d+/g) || [];
-  return nums.map(function (n) { return parseInt(n, 10); }).sort(function (a, b) { return a - b; });
+  var nums = (limpo.match(/\d+/g) || []).map(function (n) { return parseInt(n, 10); });
+  // Espessura (3º número) no catálogo vem em centésimos de mm (12 = 120 µ) e nas
+  // notas em µ direto — normaliza pra µ antes de comparar.
+  if (nums.length === 3 && nums[2] > 0 && nums[2] < 50) nums[2] = nums[2] * 10;
+  return nums.sort(function (a, b) { return a - b; });
 }
 
 function dimensoesIguaisEstoque(a, b) {
