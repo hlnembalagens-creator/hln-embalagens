@@ -55,7 +55,7 @@ function formatBRL(n) {
 }
 
 function calcVacuo(item) {
-  var peso = item.largura_m * item.comprimento_m * item.espessura_micras;
+  var peso = calcPesoVacuo(item.largura_m, item.comprimento_m, item.espessura_micras);
   var pesoTotal = peso * item.quantidade;
   var vlUnitario = peso * item.taxa_preco_peso;
   var vlTotal = item.quantidade * vlUnitario;
@@ -247,33 +247,8 @@ document.getElementById('btn-add-vacuo').addEventListener('click', function () {
 // Categorias de embalagem que ficam no estoque — usadas tanto pra filtrar o
 // combo de "Itens — Embalagem a Vácuo" (só essas entram aqui) quanto pra
 // excluir do combo de "Itens — Etiquetas / Equipamentos" (etiqueta/bobina PDV
-// ficam lá, embalagem nunca). O "match" procura no nome do produto no estoque
-// (que está em CAIXA ALTA); o "label" é o valor gravado em material, no mesmo
-// padrão Title Case já usado historicamente no formulário de pedido.
-var CATEGORIAS_EMBALAGEM_VACUO = [
-  { label: 'Nylon Poli', match: 'NYLON POLI' },
-  { label: 'MRP', match: 'MRP' },
-  { label: 'Termoencolhível', match: 'TERMOENCOLHIVEL' },
-  { label: 'Saco PP', match: 'SACO PP' },
-  { label: 'Saco PE', match: 'SACO PE' }
-];
-
-function categoriaEmbalagemDoProduto(nomeProduto) {
-  var nome = (nomeProduto || '').toUpperCase();
-  for (var i = 0; i < CATEGORIAS_EMBALAGEM_VACUO.length; i++) {
-    if (nome.indexOf(CATEGORIAS_EMBALAGEM_VACUO[i].match) !== -1) return CATEGORIAS_EMBALAGEM_VACUO[i];
-  }
-  return null;
-}
-
-// Tira as medidas (largura, comprimento, espessura, em cm/µ) do nome do produto
-// do estoque — "NYLON POLI 15X20X10" ou "SACO A VÁCUO - NYLON POLI 0,20x0,22x120"
-// (a notação "0,20" de metro vira "20" antes de extrair os números).
-function extrairMedidasVacuoDoNome(nomeProduto) {
-  var limpo = (nomeProduto || '').replace(/0,(?=\d)/g, '');
-  var nums = (limpo.match(/\d+/g) || []).map(function (n) { return parseInt(n, 10); });
-  return { largura: nums[0] || 0, comprimento: nums[1] || 0, espessura: nums[2] || 0 };
-}
+// ficam lá, embalagem nunca). CATEGORIAS_EMBALAGEM_VACUO, categoriaEmbalagemDoProduto
+// e extrairMedidasVacuoDoNome vêm de calc-vacuo.js (compartilhado com o Estoque).
 
 function openSelecionarVacuoModal() {
   document.getElementById('select-vacuo-categoria').value = '';

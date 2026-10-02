@@ -1,6 +1,49 @@
 var isAdminEstoque = false;
 var ROLES_VENDEDOR_ESTOQUE = ['vendedor', 'vendedor_ext', 'vendedor_int'];
 var allProdutosEstoque = [];
+// Cada tipo de embalagem tem o seu Fator Custo (compra) e Fator Venda, gravados em
+// `configuracoes` (chaves fator_custo_<tipo> / fator_venda_<tipo>) — o admin muda
+// pela tela de Estoque, sem precisar de ajuda técnica. Saco PP/PE ficam de fora:
+// o nome cadastrado não tem espessura, então a fórmula não se aplica.
+var TIPOS_FATOR_ESTOQUE = [
+  { label: 'Nylon Poli', chave: 'nylon_poli' },
+  { label: 'MRP', chave: 'mrp' },
+  { label: 'Termoencolhível', chave: 'termoencolhivel' }
+];
+var fatoresEstoque = {}; // { nylon_poli: { custo: 0, venda: 0 }, ... }
+
+function tipoFatorDoProduto(nomeProduto) {
+  var categoria = categoriaEmbalagemDoProduto(nomeProduto);
+  if (!categoria) return null;
+  return TIPOS_FATOR_ESTOQUE.find(function (t) { return t.label === categoria.label; }) || null;
+}
+
+async function carregarFatoresEstoque() {
+  var chaves = [];
+  TIPOS_FATOR_ESTOQUE.forEach(function (t) { chaves.push('fator_custo_' + t.chave, 'fator_venda_' + t.chave); });
+  var { data } = await supabaseClient.from('configuracoes').select('chave, valor').in('chave', chaves);
+  var porChave = {};
+  (data || []).forEach(function (r) { porChave[r.chave] = toNumberEstoque(r.valor); });
+  TIPOS_FATOR_ESTOQUE.forEach(function (t) {
+    fatoresEstoque[t.chave] = { custo: porChave['fator_custo_' + t.chave] || 0, venda: porChave['fator_venda_' + t.chave] || 0 };
+  });
+}
+
+// Custo/Venda calculados com a MESMA fórmula do Pedido (calc-vacuo.js):
+// peso = larg(m) × comp(m) × espessura(µ); valor = peso × fator do tipo.
+// Devolve null quando não dá pra calcular (sem as 3 medidas, tipo sem fator ou fator 0).
+function calcularValorEmbalagemEstoque(nomeProduto, campo) {
+  var tipo = tipoFatorDoProduto(nomeProduto);
+  if (!tipo || !fatoresEstoque[tipo.chave]) return null;
+  var fator = fatoresEstoque[tipo.chave][campo];
+  var m = extrairMedidasVacuoDoNome(nomeProduto);
+  if (!fator || !m.largura || !m.comprimento || !m.espessura) return null;
+  return calcPrecoVacuo(m.largura / 100, m.comprimento / 100, m.espessura, fator);
+}
+
+function calcularPrecoVendaEmbalagemEstoque(nomeProduto) {
+  return calcularValorEmbalagemEstoque(nomeProduto, 'venda');
+}
 
 function toNumberEstoque(v) {
   if (v == null) return 0;
@@ -251,6 +294,91 @@ if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async fun
   fecharModalAjustar();
   loadProdutosEstoque();
 });
+
+/* ===================== FATORES DAS EMBALAGENS (admin) ===================== */
+
+function preencherCamposFator() {
+  var selectTipo = document.getElementById('fator-tipo');
+  if (!selectTipo) return;
+  var f = fatoresEstoque[selectTipo.value] || { custo: 0, venda: 0 };
+  document.getElementById('fator-custo').value = f.custo || '';
+  document.getElementById('fator-venda').value = f.venda || '';
+}
+
+function iniciarCardFatores() {
+  var selectTipo = document.getElementById('fator-tipo');
+  var btnSalvar = document.getElementById('btn-salvar-fatores');
+  if (!selectTipo || !btnSalvar) return; // card some pra quem não é admin
+
+  selectTipo.innerHTML = TIPOS_FATOR_ESTOQUE.map(function (t) {
+    return '<option value="' + t.chave + '">' + t.label + '</option>';
+  }).join('');
+  preencherCamposFator();
+  selectTipo.addEventListener('change', preencherCamposFator);
+
+  btnSalvar.addEventListener('click', async function () {
+    var tipo = TIPOS_FATOR_ESTOQUE.find(function (t) { return t.chave === selectTipo.value; });
+    var statusEl = document.getElementById('fatores-status');
+    var custo = toNumberEstoque(document.getElementById('fator-custo').value);
+    var venda = toNumberEstoque(document.getElementById('fator-venda').value);
+
+    if (custo < 0 || venda < 0) {
+      showToast('Os fatores não podem ser negativos.', 'error');
+      return;
+    }
+
+    var produtosDoTipo = allProdutosEstoque.filter(function (p) {
+      var t = tipoFatorDoProduto(p.nome_produto);
+      return t && t.chave === tipo.chave;
+    });
+
+    if (!confirm('Salvar os fatores de ' + tipo.label + ' e recalcular ' + produtosDoTipo.length + ' produto(s)? ' +
+      'O Custo Unit. e o Venda Unit. atuais deles (só dos fatores preenchidos) serão substituídos.')) return;
+
+    btnSalvar.disabled = true;
+    btnSalvar.textContent = 'Salvando...';
+
+    var agora = new Date().toISOString();
+    var { error } = await supabaseClient.from('configuracoes').upsert([
+      { chave: 'fator_custo_' + tipo.chave, valor: String(custo), updated_at: agora },
+      { chave: 'fator_venda_' + tipo.chave, valor: String(venda), updated_at: agora }
+    ], { onConflict: 'chave' });
+
+    if (error) {
+      showToast('Erro ao salvar os fatores: ' + error.message, 'error');
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = 'Salvar e recalcular';
+      return;
+    }
+
+    fatoresEstoque[tipo.chave] = { custo: custo, venda: venda };
+
+    var atualizados = 0, falhas = 0;
+    for (var i = 0; i < produtosDoTipo.length; i += 20) {
+      var lote = produtosDoTipo.slice(i, i + 20);
+      var resultados = await Promise.all(lote.map(function (p) {
+        var novo = {};
+        var novoCusto = calcularValorEmbalagemEstoque(p.nome_produto, 'custo');
+        var novaVenda = calcularValorEmbalagemEstoque(p.nome_produto, 'venda');
+        if (novoCusto != null) novo.preco_custo = novoCusto;
+        if (novaVenda != null) novo.preco_unitario = novaVenda;
+        if (!Object.keys(novo).length) return Promise.resolve({ ignorado: true });
+        return supabaseClient.from('produtos_catalogo').update(novo).eq('id', p.id);
+      }));
+      resultados.forEach(function (r) {
+        if (r.ignorado) return;
+        if (r.error) falhas++; else atualizados++;
+      });
+    }
+
+    btnSalvar.disabled = false;
+    btnSalvar.textContent = 'Salvar e recalcular';
+    statusEl.style.display = 'block';
+    statusEl.textContent = tipo.label + ': ' + atualizados + ' produto(s) recalculado(s)' + (falhas ? ', ' + falhas + ' com erro.' : '.');
+    showToast('Fatores de ' + tipo.label + ' salvos.', 'ok');
+    loadProdutosEstoque();
+  });
+}
 
 /* ===================== IMPORTAÇÕES PENDENTES (automáticas, pasta Nfe) ===================== */
 
@@ -699,7 +827,10 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
         var novaQuantidade = (existenteProduto.quantidade_estoque || 0) + item.quantidade;
         await supabaseClient.from('produtos_catalogo').update({
           quantidade_estoque: novaQuantidade,
-          preco_custo: item.valor_unitario || existenteProduto.preco_custo
+          preco_custo: item.valor_unitario || existenteProduto.preco_custo,
+          // Só preenche Venda Unit. automático se ainda não tinha um (nunca sobrescreve
+          // um preço que o admin já ajustou manualmente).
+          preco_unitario: existenteProduto.preco_unitario != null ? existenteProduto.preco_unitario : calcularPrecoVendaEmbalagemEstoque(existenteProduto.nome_produto)
         }).eq('id', existenteProduto.id);
         existenteProduto.quantidade_estoque = novaQuantidade;
       } else {
@@ -709,6 +840,7 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
         var { data: novoProduto } = await supabaseClient.from('produtos_catalogo').insert({
           nome_produto: item.descricao, codigo_produto: proximoCodigoSequencialEstoque(produtosAtuais),
           quantidade_estoque: item.quantidade, preco_custo: item.valor_unitario || null,
+          preco_unitario: calcularPrecoVendaEmbalagemEstoque(item.descricao),
           created_by: currentUserIdEstoque
         }).select().single();
         if (novoProduto) produtosAtuais.push(novoProduto);
@@ -822,5 +954,9 @@ document.getElementById('btn-exportar-lista-preco').addEventListener('click', fu
   currentUserIdEstoque = auth.session.user.id;
   renderHeadEstoque();
   loadProdutosEstoque();
-  if (isAdminEstoque) loadPendentes();
+  if (isAdminEstoque) {
+    await carregarFatoresEstoque();
+    iniciarCardFatores();
+    loadPendentes();
+  }
 })();

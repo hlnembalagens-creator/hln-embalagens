@@ -36,6 +36,34 @@
 <main class="admin-main">
   <h1 class="admin-title">Estoque</h1>
 
+  <div class="admin-card" id="card-fatores" data-role-admin>
+    <h2>Fatores das embalagens</h2>
+    <p style="color:var(--gray-400); margin-top:-10px; margin-bottom:16px; font-size:0.85rem;">
+      Escolha o tipo e defina o Fator Custo (compra) e o Fator Venda. Ao salvar, o Custo Unit. e o Venda Unit. de todas as
+      medidas daquele tipo são recalculados pela mesma fórmula do Pedido (largura × comprimento × espessura × fator),
+      e a Margem se ajusta sozinha.
+    </p>
+    <div class="form-grid" style="align-items:end;">
+      <div class="form-field">
+        <label for="fator-tipo">Tipo de embalagem</label>
+        <select id="fator-tipo"></select>
+      </div>
+      <div class="form-field">
+        <label for="fator-custo">Fator Custo (compra)</label>
+        <input type="text" inputmode="decimal" id="fator-custo">
+      </div>
+      <div class="form-field">
+        <label for="fator-venda">Fator Venda</label>
+        <input type="text" inputmode="decimal" id="fator-venda">
+      </div>
+      <div class="form-field">
+        <label>&nbsp;</label>
+        <button type="button" class="btn btn-primary" id="btn-salvar-fatores">Salvar e recalcular</button>
+      </div>
+    </div>
+    <p id="fatores-status" style="display:none; margin-top:12px; font-size:0.85rem;"></p>
+  </div>
+
   <div class="admin-card" id="card-pendentes" data-role-admin style="display:none;">
     <h2>Importações pendentes de revisão</h2>
     <p style="color:var(--gray-400); margin-top:-10px; margin-bottom:16px; font-size:0.85rem;">
@@ -172,6 +200,7 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
+<script src="js/calc-vacuo.js"></script>
 <script src="js/estoque.js"></script>
 </body>
 </html>
