@@ -214,11 +214,18 @@ function renderClientesRanking(pedidos) {
 
 /* ===================== PRODUTOS MAIS VENDIDOS ===================== */
 
+function materialVacuoCanonico(material) {
+  var m = (material || '').toLowerCase();
+  if (m.indexOf('mrp') !== -1) return 'MRP';
+  if (m.indexOf('term') !== -1) return 'Termoencolhível';
+  return 'Nylon Poli'; // inclui variações de digitação e pedidos antigos sem material
+}
+
 async function carregarProdutosRanking(vendedorId) {
   var topEl = document.getElementById('top-produtos');
 
   var [geraisRes, vacuoRes] = await Promise.all([
-    supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, pedidos!inner(tipo, vendedor_id, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido'),
+    supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, produtos_catalogo(nome_produto), pedidos!inner(tipo, vendedor_id, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido'),
     supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, largura_m, comprimento_m, espessura_micras, pedidos!inner(tipo, vendedor_id, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido')
   ]);
 
@@ -237,14 +244,21 @@ async function carregarProdutosRanking(vendedorId) {
 
   var porProduto = {};
   (geraisRes.data || []).filter(naoEhFornecedor).forEach(function (i) {
-    var nome = i.nome_produto || 'Produto sem nome';
+    // Usa o nome ATUAL do produto no catálogo — pedidos antigos guardam o nome que o
+    // produto tinha na época ("Etiqueta Térmica 40x40" virou "... - 21M") e dividiam a
+    // mesma etiqueta em linhas separadas, diminuindo a quantidade de cada uma.
+    var nome = (i.produtos_catalogo && i.produtos_catalogo.nome_produto) || i.nome_produto || 'Produto sem nome';
     porProduto[nome] = (porProduto[nome] || 0) + (parseFloat(i.quantidade) || 0);
   });
   (vacuoRes.data || []).filter(naoEhFornecedor).forEach(function (i) {
-    var medidas = formatCmDash(i.largura_m) + 'X' + formatCmDash(i.comprimento_m) + 'X' + Math.round(parseFloat(i.espessura_micras) || 0);
+    var esp = Math.round(parseFloat(i.espessura_micras) || 0);
+    if (esp > 0 && esp < 50) esp = esp * 10; // escala do catálogo (12 = 120 µ)
+    var medidas = formatCmDash(i.largura_m) + 'X' + formatCmDash(i.comprimento_m) + 'X' + esp;
     // Medidas logo no início do nome — é o que mais importa pra saber qual modelo vendeu,
-    // então tem que aparecer mesmo se o card cortar o texto com "...".
-    var nome = 'Saco a Vácuo ' + medidas + (i.material ? ' — ' + i.material : '') + (i.tipo ? ' / ' + i.tipo : '');
+    // então tem que aparecer mesmo se o card cortar o texto com "...". O material é
+    // normalizado (digitação livre gerava "Nyon Poli", "Nylon Poly"...) e o tipo
+    // (Natural/vazio) fica de fora, senão a mesma medida se espalha em várias linhas.
+    var nome = 'Saco a Vácuo ' + medidas + ' — ' + materialVacuoCanonico(i.material);
     porProduto[nome] = (porProduto[nome] || 0) + (parseFloat(i.quantidade) || 0);
   });
 

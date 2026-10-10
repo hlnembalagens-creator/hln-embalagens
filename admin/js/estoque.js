@@ -66,33 +66,8 @@ function formatarMargemEstoque(margem) {
   return margem.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
 }
 
-// Etiquetas em rolo vêm em caixas fechadas, e os rolos por caixa dependem da
-// largura e da metragem (lidas do nome, ex: "Etiqueta Térmica 40x40 - 21M"):
-//   40 mm: 21 m = 60 rolos/caixa, 30 m = 48 rolos/caixa
-//   60 mm: 30 rolos/caixa (21 m ou 30 m, e também a 60xContínua)
-// Outras larguras/metragens (ou produtos que não são etiqueta) não mostram
-// caixa, só a unidade.
-function rolosPorCaixaEtiqueta(largura, metragem) {
-  if (largura === 60) return 30;
-  if (largura === 40) {
-    if (metragem === 21) return 60;
-    if (metragem === 30) return 48;
-  }
-  return null;
-}
-
-function medidasEtiquetaEstoque(produto) {
-  var nome = (produto.nome_produto || '').toUpperCase();
-  if (nome.indexOf('ETQ') === -1 && nome.indexOf('ETIQUETA') === -1) return null;
-  var larg = nome.match(/(\d{2,3})\s*X/);
-  var metr = nome.match(/(\d{2})\s*M(?![A-Z])/);
-  if (!larg) return null;
-  return { largura: parseInt(larg[1], 10), metragem: metr ? parseInt(metr[1], 10) : null };
-}
-
 function formatarCaixasEstoque(produto) {
-  var medidas = medidasEtiquetaEstoque(produto);
-  var rolosPorCaixa = medidas ? rolosPorCaixaEtiqueta(medidas.largura, medidas.metragem) : null;
+  var rolosPorCaixa = rolosPorCaixaDoProduto(produto.nome_produto); // regra em caixas-etiqueta.js
   if (!rolosPorCaixa) return '—';
 
   var qtd = produto.quantidade_estoque || 0;
