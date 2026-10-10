@@ -66,6 +66,15 @@
             <option value="fornecedor">Fornecedor (ex: Altisvac) — só pra registrar compras/pedidos feitos a ele, não entra nos rankings do Dashboard</option>
           </select>
         </div>
+        <div class="form-field span-full" data-role-admin id="campo-tipo-fornecedor" style="display:none;">
+          <label for="tipo_fornecedor">Tipo de fornecedor</label>
+          <select id="tipo_fornecedor">
+            <option value="">— Não definido —</option>
+            <option value="embalagem_vacuo">Embalagem a vácuo (ex: Altisvac)</option>
+            <option value="etiqueta">Etiquetas / bobinas</option>
+            <option value="outro">Outro</option>
+          </select>
+        </div>
         <div class="form-field span-full" data-role-admin style="flex-direction:row; align-items:center; gap:8px;">
           <input type="checkbox" id="nao_contabilizar" style="width:auto;">
           <label for="nao_contabilizar" style="margin:0;">Cadastro genérico — não contabilizar no Financeiro (ex: cliente "Orçamento" usado antes de saber quem é o cliente de verdade)</label>

@@ -27,8 +27,19 @@ function setFormValues(cliente) {
   // Vendedor não tem esses campos na tela (não pode cadastrar fornecedor nem marcar genérico).
   var tipoCadastroEl = document.getElementById('tipo_cadastro');
   if (tipoCadastroEl) tipoCadastroEl.value = (cliente && cliente.eh_fornecedor) ? 'fornecedor' : 'cliente';
+  var tipoFornecedorEl = document.getElementById('tipo_fornecedor');
+  if (tipoFornecedorEl) tipoFornecedorEl.value = (cliente && cliente.tipo_fornecedor) || '';
+  atualizarCampoTipoFornecedor();
   var naoContabilizarEl = document.getElementById('nao_contabilizar');
   if (naoContabilizarEl) naoContabilizarEl.checked = !!(cliente && cliente.nao_contabilizar);
+}
+
+// O tipo de fornecedor só faz sentido quando o cadastro é de fornecedor.
+function atualizarCampoTipoFornecedor() {
+  var tipoCadastro = document.getElementById('tipo_cadastro');
+  var campo = document.getElementById('campo-tipo-fornecedor');
+  if (!tipoCadastro || !campo) return;
+  campo.style.display = tipoCadastro.value === 'fornecedor' ? '' : 'none';
 }
 
 function mostrarFormularioCliente() {
@@ -41,6 +52,9 @@ function resetForm() {
   document.getElementById('cliente-id').value = '';
   var tipoCadastroElReset = document.getElementById('tipo_cadastro');
   if (tipoCadastroElReset) tipoCadastroElReset.value = 'cliente';
+  var tipoFornecedorElReset = document.getElementById('tipo_fornecedor');
+  if (tipoFornecedorElReset) tipoFornecedorElReset.value = '';
+  atualizarCampoTipoFornecedor();
   document.getElementById('form-title').textContent = 'Novo cliente';
   document.getElementById('cliente-error').style.display = 'none';
   document.getElementById('cnpj-status').textContent = '';
@@ -464,6 +478,13 @@ document.getElementById('cliente-form').addEventListener('submit', async functio
     values.eh_fornecedor = clienteOriginalSubmit ? !!clienteOriginalSubmit.eh_fornecedor : false;
   }
 
+  var tipoFornecedorSubmit = document.getElementById('tipo_fornecedor');
+  if (tipoFornecedorSubmit) {
+    values.tipo_fornecedor = values.eh_fornecedor ? (tipoFornecedorSubmit.value || null) : null;
+  } else {
+    values.tipo_fornecedor = clienteOriginalSubmit ? (clienteOriginalSubmit.tipo_fornecedor || null) : null;
+  }
+
   var naoContabilizarSubmit = document.getElementById('nao_contabilizar');
   values.nao_contabilizar = naoContabilizarSubmit
     ? naoContabilizarSubmit.checked
@@ -507,6 +528,9 @@ document.getElementById('cliente-form').addEventListener('submit', async functio
 });
 
 document.getElementById('cliente-cancel-btn').addEventListener('click', resetForm);
+
+var tipoCadastroSelect = document.getElementById('tipo_cadastro');
+if (tipoCadastroSelect) tipoCadastroSelect.addEventListener('change', atualizarCampoTipoFornecedor);
 
 document.getElementById('btn-cadastrar-cliente').addEventListener('click', function () {
   resetForm();
