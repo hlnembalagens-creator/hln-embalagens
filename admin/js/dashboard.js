@@ -274,7 +274,7 @@ async function carregarProdutosRanking(vendedorId) {
   if (!auth) return;
 
   // Vendedor só enxerga os próprios números — admin vê tudo, de todo mundo.
-  var vendedorId = auth.profile.role === 'vendedor' ? auth.session.user.id : null;
+  var vendedorId = ['vendedor', 'vendedor_ext', 'vendedor_int'].indexOf(auth.profile.role) !== -1 ? auth.session.user.id : null;
   if (vendedorId) {
     var aviso = document.createElement('p');
     aviso.style.cssText = 'margin-top:-16px; margin-bottom:20px; color:var(--gray-400); font-size:0.9rem;';
