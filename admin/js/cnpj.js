@@ -29,6 +29,33 @@ async function fetchComRetentativa(url, tentativas) {
   throw ultimoErro;
 }
 
+// Fonte alternativa: https://open.cnpja.com/office/{cnpj} (gratuita, com CORS liberado).
+async function fetchCnpjCnpja(cnpj) {
+  try {
+    var resp = await fetchComRetentativa('https://open.cnpja.com/office/' + cnpj, 2);
+    if (!resp.ok) return null;
+    var d = await resp.json();
+    var end = d.address || {};
+    var fone = (d.phones && d.phones[0]) ? (d.phones[0].area || '') + (d.phones[0].number || '') : '';
+    return {
+      cnpj: d.taxId || cnpj,
+      razaoSocial: (d.company && d.company.name) || '',
+      nomeFantasia: d.alias || '',
+      logradouro: end.street || '',
+      numero: end.number || '',
+      complemento: end.details || '',
+      bairro: end.district || '',
+      cep: end.zip || '',
+      municipio: end.city || '',
+      uf: end.state || '',
+      telefone: fone,
+      email: (d.emails && d.emails[0] && d.emails[0].address) || ''
+    };
+  } catch (err) {
+    return null;
+  }
+}
+
 async function fetchCnpj(cnpjInput) {
   var cnpj = onlyDigits(cnpjInput);
 
@@ -36,17 +63,22 @@ async function fetchCnpj(cnpjInput) {
     throw new Error('CNPJ deve ter 14 dígitos.');
   }
 
+  // A BrasilAPI usa um espelho da base da Receita que demora a incluir empresas/filiais
+  // recém-abertas — se ela não achar, tenta a CNPJá (dados mais frescos) antes de desistir.
   var response;
   try {
     response = await fetchComRetentativa('https://brasilapi.com.br/api/cnpj/v1/' + cnpj, 3);
   } catch (networkError) {
-    throw new Error('Não foi possível conectar à consulta de CNPJ. Verifique sua internet.');
+    response = null;
   }
 
-  if (response.status === 404) {
-    throw new Error('CNPJ não encontrado na Receita Federal.');
-  }
-  if (!response.ok) {
+  if (!response || !response.ok) {
+    var alternativo = await fetchCnpjCnpja(cnpj);
+    if (alternativo) return alternativo;
+    if (!response) throw new Error('Não foi possível conectar à consulta de CNPJ. Verifique sua internet.');
+    if (response.status === 404) {
+      throw new Error('CNPJ não encontrado na Receita Federal (empresas abertas há poucos dias podem demorar a aparecer — preencha manualmente).');
+    }
     throw new Error('Consulta de CNPJ indisponível no momento (tente novamente em instantes).');
   }
 

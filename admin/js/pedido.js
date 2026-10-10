@@ -17,6 +17,30 @@ function fatorTravadoParaRole() {
   return ROLES_VENDEDOR.indexOf(currentUserRole) !== -1;
 }
 
+// Fator de venda de cada tipo de embalagem (definido pelo admin em Estoque > Fatores das
+// embalagens). O vendedor não digita: o fator acompanha o material do item.
+var fatoresVendaTipo = {};
+
+function chaveTipoPorMaterial(material) {
+  var m = (material || '').toLowerCase();
+  if (m.indexOf('mrp') !== -1) return 'mrp';
+  if (m.indexOf('term') !== -1) return 'termoencolhivel';
+  if (m.indexOf('nylon') !== -1 || m.indexOf('nyon') !== -1 || m.indexOf('poli') !== -1) return 'nylon_poli';
+  return null;
+}
+
+// Fator do tipo de embalagem; sem fator definido (ou material de outro tipo), cai no Fator padrão.
+function fatorParaMaterial(material) {
+  var chave = chaveTipoPorMaterial(material);
+  var fator = chave ? fatoresVendaTipo[chave] : 0;
+  return fator > 0 ? fator : fatorPadraoVacuo;
+}
+
+async function carregarFatoresVendaTipo() {
+  var { data } = await supabaseClient.from('configuracoes').select('chave, valor').in('chave', ['fator_venda_nylon_poli', 'fator_venda_mrp', 'fator_venda_termoencolhivel']);
+  (data || []).forEach(function (r) { fatoresVendaTipo[r.chave.replace('fator_venda_', '')] = toNumber(r.valor); });
+}
+
 async function carregarFatorPadrao() {
   var { data } = await supabaseClient.from('configuracoes').select('valor').eq('chave', 'fator_padrao_vacuo').maybeSingle();
   fatorPadraoVacuo = data ? toNumber(data.valor) : 0;
@@ -134,6 +158,7 @@ document.getElementById('select-cliente').addEventListener('change', function (e
   var id = e.target.value;
   selectedCliente = clientesCache.find(function (c) { return c.id === id; }) || null;
   atualizarModoAltisvac();
+  renderGeraisItems(); // fornecedor de etiqueta troca a quantidade pra caixas
   var resumo = document.getElementById('cliente-resumo');
 
   if (!selectedCliente) {
@@ -201,14 +226,14 @@ function renderVacuoRow(item) {
   row.dataset.id = item._id;
 
   row.innerHTML =
-    '<div class="form-field"><label class="item-row-label">Material</label><input type="text" data-f="material" placeholder="Ex: NYLON POLI" value="' + (item.material || '') + '"></div>' +
+    '<div class="form-field"><label class="item-row-label">Material</label><input type="text" data-f="material" list="lista-materiais-vacuo" placeholder="Ex: NYLON POLI" value="' + (item.material || '') + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Larg. (cm)</label><input type="text" inputmode="decimal" data-f="largura_m" placeholder="Ex: 20" value="' + (item.largura_m ? formatMedidaCm(item.largura_m) : '') + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Comp. (cm)</label><input type="text" inputmode="decimal" data-f="comprimento_m" placeholder="Ex: 22" value="' + (item.comprimento_m ? formatMedidaCm(item.comprimento_m) : '') + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Esp. (µ)</label><input type="text" inputmode="decimal" data-f="espessura_micras" placeholder="Ex: 120" value="' + item.espessura_micras + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Tipo</label><input type="text" data-f="tipo" placeholder="Ex: NATURAL" value="' + (item.tipo || '') + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Qtd.</label><input type="text" inputmode="decimal" data-f="quantidade" value="' + item.quantidade + '"></div>' +
     '<div class="form-field"><label class="item-row-label">Peso</label><span class="calc-readout" data-out="peso">0</span></div>' +
-    '<div class="form-field"><label class="item-row-label">Fator</label><input type="text" inputmode="decimal" data-f="taxa_preco_peso" value="' + item.taxa_preco_peso + '"' + (fatorTravadoParaRole() ? ' readonly title="Fator padrão da empresa — só admin pode mudar. Fale com um administrador se precisar de uma negociação especial."' : '') + '></div>' +
+    '<div class="form-field"><label class="item-row-label">Fator</label><input type="text" inputmode="decimal" data-f="taxa_preco_peso" value="' + item.taxa_preco_peso + '"' + (fatorTravadoParaRole() ? ' readonly title="Fator definido pelo tipo de embalagem — só admin pode mudar. Fale com um administrador se precisar de uma negociação especial."' : '') + '></div>' +
     '<div class="form-field"><label class="item-row-label">Vl. Total</label><span class="calc-readout" data-out="vl_total">R$ 0,00</span></div>' +
     '<button type="button" class="item-remove" title="Remover item">✕</button>';
 
@@ -223,6 +248,14 @@ function renderVacuoRow(item) {
         item[field] = toNumber(input.value) / 100;
       } else {
         item[field] = (VACUO_CAMPOS_NUMERICOS.indexOf(field) !== -1) ? toNumber(input.value) : input.value;
+      }
+      // Fator acompanha o tipo de embalagem: vendedor (travado) sempre; admin só enquanto
+      // não tiver digitado um fator próprio nesse item (negociação especial).
+      if (field === 'taxa_preco_peso') {
+        item._fatorEditado = true;
+      } else if (field === 'material' && (fatorTravadoParaRole() || !item._fatorEditado)) {
+        item.taxa_preco_peso = fatorParaMaterial(item.material);
+        row.querySelector('[data-f="taxa_preco_peso"]').value = item.taxa_preco_peso;
       }
       updateVacuoRowReadout(row, item);
       updateTotals();
@@ -359,7 +392,7 @@ document.getElementById('selecionar-vacuo-btn-adicionar').addEventListener('clic
     _id: uid(), item: 'SACO A VÁCUO', material: categoria.label,
     largura_m: medidas.largura / 100, comprimento_m: medidas.comprimento / 100,
     espessura_micras: medidas.espessura, tipo: '', quantidade: quantidade,
-    taxa_preco_peso: fatorPadraoVacuo
+    taxa_preco_peso: fatorParaMaterial(categoria.label)
   };
   vacuoItems.push(item);
   renderVacuoRow(item);
@@ -369,6 +402,27 @@ document.getElementById('selecionar-vacuo-btn-adicionar').addEventListener('clic
 
 /* ===================== ITENS GERAIS ===================== */
 
+// Pedido pra fornecedor de etiqueta: a quantidade é lançada em CAIXAS (o sistema converte
+// pra rolos pela regra de caixas-etiqueta.js) e o documento do fornecedor mostra só caixas.
+function modoFornecedorEtiqueta() {
+  return !!(selectedCliente && selectedCliente.eh_fornecedor && selectedCliente.tipo_fornecedor === 'etiqueta');
+}
+
+function formatarCaixasPedido(rolos, rolosPorCaixa) {
+  if (!rolosPorCaixa) return '—';
+  var caixas = Math.floor(rolos / rolosPorCaixa);
+  var resto = rolos % rolosPorCaixa;
+  return caixas + ' cx' + (resto ? ' + ' + resto + ' rolos' : '');
+}
+
+// Texto da quantidade no documento do fornecedor de etiqueta: só caixas.
+function textoQuantidadeFornecedor(g) {
+  var rolosPorCaixa = rolosPorCaixaDoProduto(g.nome_produto);
+  if (!rolosPorCaixa) return g.quantidade + ' rolos';
+  var caixas = Math.round((g.quantidade / rolosPorCaixa) * 100) / 100;
+  return String(caixas).replace('.', ',') + (caixas === 1 ? ' caixa' : ' caixas');
+}
+
 function renderGeraisItems() {
   var container = document.getElementById('gerais-items');
   if (!geraisItems.length) {
@@ -376,31 +430,52 @@ function renderGeraisItems() {
     return;
   }
 
+  var modoCaixas = modoFornecedorEtiqueta();
+
   container.innerHTML = geraisItems.map(function (g) {
     var precoTotal = g.preco_unitario * g.quantidade;
+    var rolosPorCaixa = rolosPorCaixaDoProduto(g.nome_produto);
     var pendencias = [];
     if (!g.codigo_produto) pendencias.push('Código');
     if (!g.ncm) pendencias.push('NCM');
-    var badge = pendencias.length ? '<span class="badge badge-warning">' + pendencias.join(' + ') + ' pendente</span>' : '';
+    var badge = pendencias.length ? ' <span class="badge badge-warning">' + pendencias.join(' + ') + ' pendente</span>' : '';
+    var caixasPorInput = modoCaixas && rolosPorCaixa;
 
-    return '<div class="items-gerais-row" data-id="' + g._id + '">' +
-      '<div><strong>' + g.nome_produto + '</strong><br>' + badge + '</div>' +
-      '<div>Cód: ' + (g.codigo_produto || '—') + '</div>' +
-      '<div>NCM: ' + (g.ncm || '—') + '</div>' +
-      '<div><label class="item-row-label">Unit. (R$)</label><input type="text" inputmode="decimal" class="gerais-input" data-f="preco_unitario" value="' + g.preco_unitario + '"></div>' +
-      '<div><label class="item-row-label">Qtd.</label><input type="text" inputmode="decimal" class="gerais-input" data-f="quantidade" value="' + g.quantidade + '"></div>' +
-      '<div><label class="item-row-label">Total</label><span class="calc-readout" data-out="preco_total">' + formatBRL(precoTotal) + '</span></div>' +
+    var celulaQtd = caixasPorInput
+      ? '<span class="calc-readout" data-out="rolos">' + g.quantidade.toLocaleString('pt-BR') + '</span>'
+      : '<input type="text" inputmode="decimal" data-f="quantidade" value="' + g.quantidade + '">';
+    var celulaCaixas = caixasPorInput
+      ? '<input type="text" inputmode="decimal" data-f="caixas" value="' + (Math.round((g.quantidade / rolosPorCaixa) * 100) / 100) + '">'
+      : '<span class="calc-readout" data-out="caixas">' + formatarCaixasPedido(g.quantidade, rolosPorCaixa) + '</span>';
+
+    return '<div class="item-row item-row-gerais" data-id="' + g._id + '">' +
+      '<div class="form-field"><label class="item-row-label">Produto</label><span class="calc-readout">' + g.nome_produto + badge + '</span></div>' +
+      '<div class="form-field"><label class="item-row-label">Cód.</label><span class="calc-readout">' + (g.codigo_produto || '—') + '</span></div>' +
+      '<div class="form-field"><label class="item-row-label">NCM</label><span class="calc-readout">' + (g.ncm || '—') + '</span></div>' +
+      '<div class="form-field"><label class="item-row-label">Unit. (R$)</label><input type="text" inputmode="decimal" data-f="preco_unitario" value="' + g.preco_unitario + '"></div>' +
+      '<div class="form-field"><label class="item-row-label">Qtd. (rolos)</label>' + celulaQtd + '</div>' +
+      '<div class="form-field"><label class="item-row-label">Caixas</label>' + celulaCaixas + '</div>' +
+      '<div class="form-field"><label class="item-row-label">Vl. Total</label><span class="calc-readout" data-out="preco_total">' + formatBRL(precoTotal) + '</span></div>' +
       '<button type="button" class="item-remove" title="Remover item">✕</button>' +
     '</div>';
   }).join('');
 
-  container.querySelectorAll('.items-gerais-row').forEach(function (row) {
-    var id = row.dataset.id;
-    var g = geraisItems.find(function (item) { return item._id === id; });
+  container.querySelectorAll('.item-row-gerais').forEach(function (row) {
+    var g = geraisItems.find(function (item) { return item._id === row.dataset.id; });
     if (!g) return;
+    var rolosPorCaixa = rolosPorCaixaDoProduto(g.nome_produto);
     row.querySelectorAll('[data-f]').forEach(function (input) {
       input.addEventListener('input', function () {
-        g[input.dataset.f] = toNumber(input.value);
+        var v = toNumber(input.value);
+        if (input.dataset.f === 'caixas') {
+          g.quantidade = Math.round(v * rolosPorCaixa);
+          var rolosEl = row.querySelector('[data-out="rolos"]');
+          if (rolosEl) rolosEl.textContent = g.quantidade.toLocaleString('pt-BR');
+        } else {
+          g[input.dataset.f] = v;
+          var caixasEl = row.querySelector('[data-out="caixas"]');
+          if (caixasEl) caixasEl.textContent = formatarCaixasPedido(g.quantidade, rolosPorCaixa);
+        }
         row.querySelector('[data-out="preco_total"]').textContent = formatBRL(g.preco_unitario * g.quantidade);
         updateTotals();
       });
@@ -543,6 +618,8 @@ document.getElementById('selecionar-btn-cancelar').addEventListener('click', clo
 
 document.getElementById('select-produto-existente').addEventListener('change', function (e) {
   var produto = catalogoCache.find(function (p) { return p.id === e.target.value; });
+  var labelQtd = document.querySelector('label[for="select-produto-quantidade"]');
+  if (labelQtd) labelQtd.textContent = (modoFornecedorEtiqueta() && produto && rolosPorCaixaDoProduto(produto.nome_produto)) ? 'Quantidade (caixas) *' : 'Quantidade *';
   document.getElementById('select-produto-codigo-readout').textContent = produto && produto.codigo_produto ? produto.codigo_produto : '—';
   document.getElementById('select-produto-ncm-readout').textContent = produto && produto.ncm ? produto.ncm : '—';
   document.getElementById('select-produto-preco').value = produto ? (produto.preco_unitario || 0) : '';
@@ -566,6 +643,10 @@ document.getElementById('selecionar-btn-adicionar').addEventListener('click', fu
     errorEl.style.display = 'block';
     return;
   }
+
+  // Fornecedor de etiqueta: o número digitado é de CAIXAS — guarda em rolos.
+  var rolosPorCaixaSel = rolosPorCaixaDoProduto(produto.nome_produto);
+  if (modoFornecedorEtiqueta() && rolosPorCaixaSel) quantidade = quantidade * rolosPorCaixaSel;
 
   var precoEditado = toNumber(document.getElementById('select-produto-preco').value);
 
@@ -998,12 +1079,16 @@ function buildViaHtml(label) {
     '</tr>';
   }).join('');
 
-  var geraisRowsHtml = geraisItems.map(function (g) {
-    return '<tr>' +
-      '<td>' + g.nome_produto + '</td><td>' + (g.codigo_produto || '-') + '</td><td>' + (g.ncm || '-') + '</td>' +
-      '<td>' + formatBRL(g.preco_unitario) + '</td><td>' + g.quantidade + '</td><td>' + formatBRL(g.preco_unitario * g.quantidade) + '</td>' +
-    '</tr>';
-  }).join('');
+  var geraisRowsHtml = modoFornecedorEtiqueta()
+    ? geraisItems.map(function (g) {
+        return '<tr><td>' + g.nome_produto + '</td><td>' + textoQuantidadeFornecedor(g) + '</td></tr>';
+      }).join('')
+    : geraisItems.map(function (g) {
+        return '<tr>' +
+          '<td>' + g.nome_produto + '</td><td>' + (g.codigo_produto || '-') + '</td><td>' + (g.ncm || '-') + '</td>' +
+          '<td>' + formatBRL(g.preco_unitario) + '</td><td>' + g.quantidade + '</td><td>' + formatBRL(g.preco_unitario * g.quantidade) + '</td>' +
+        '</tr>';
+      }).join('');
 
   var formaPagamentoLabels = {
     boleto: 'Boleto', a_vista: 'À Vista', cartao_credito: 'Cartão de Crédito',
@@ -1019,7 +1104,9 @@ function buildViaHtml(label) {
     '<p><strong>CNPJ/CPF:</strong> ' + (cliente.cnpj_cpf || '') + ' &nbsp; <strong>CÓDIGO:</strong> ' + (cliente.codigo || '') + ' &nbsp; <strong>I.E:</strong> ' + (cliente.ie || '') + '</p>' +
     '<p><strong>CONTATO:</strong> ' + (cliente.contato_nome || '') + ' &nbsp; <strong>TEL:</strong> ' + (cliente.contato_telefone || '') + ' &nbsp; <strong>EMAIL:</strong> ' + (cliente.contato_email || '') + '</p>' +
     (vacuoRowsHtml ? '<table><thead><tr><th>Item</th><th>Material</th><th>Larg.</th><th>Comp.</th><th>Esp.</th><th>Tipo</th><th>Peso</th><th>Qtd</th><th>Peso Total</th><th>Vl. Unit.</th><th>Vl. Total</th></tr></thead><tbody>' + vacuoRowsHtml + '</tbody></table>' : '') +
-    (geraisRowsHtml ? '<table><thead><tr><th>Produto</th><th>Código</th><th>NCM</th><th>Vl. Unit.</th><th>Qtd</th><th>Vl. Total</th></tr></thead><tbody>' + geraisRowsHtml + '</tbody></table>' : '') +
+    (geraisRowsHtml ? (modoFornecedorEtiqueta()
+      ? '<table><thead><tr><th>Produto</th><th>Quantidade</th></tr></thead><tbody>' + geraisRowsHtml + '</tbody></table>'
+      : '<table><thead><tr><th>Produto</th><th>Código</th><th>NCM</th><th>Vl. Unit.</th><th>Qtd</th><th>Vl. Total</th></tr></thead><tbody>' + geraisRowsHtml + '</tbody></table>') : '') +
     '<p><strong>PRAZO DE ENTREGA:</strong> ' + (document.getElementById('prazo_entrega').value || '') + '</p>' +
     '<p><strong>ICMS:</strong> ' + (document.getElementById('icms').value || '') + ' &nbsp; <strong>IPI:</strong> ' + (document.getElementById('ipi').value || '') + ' &nbsp; <strong>REGIME:</strong> ' + (document.getElementById('regime_tributacao').value || '') + '</p>' +
     '<p><strong>TRANSPORTADORA:</strong> ' + (document.getElementById('transp_empresa').value || '') + ' — ' + (document.getElementById('transp_endereco').value || '') + ' — ' + (document.getElementById('transp_tel').value || '') + '</p>' +
@@ -1219,7 +1306,8 @@ async function iniciarEdicaoPedido(pedidoId) {
     var item = {
       _id: uid(), item: i.item, material: i.material, largura_m: parseFloat(i.largura_m) || 0,
       comprimento_m: parseFloat(i.comprimento_m) || 0, espessura_micras: parseFloat(i.espessura_micras) || 0,
-      tipo: i.tipo, quantidade: parseFloat(i.quantidade) || 0, taxa_preco_peso: parseFloat(i.taxa_preco_peso) || 0
+      tipo: i.tipo, quantidade: parseFloat(i.quantidade) || 0, taxa_preco_peso: parseFloat(i.taxa_preco_peso) || 0,
+      _fatorEditado: true
     };
     vacuoItems.push(item);
     renderVacuoRow(item);
@@ -1345,6 +1433,7 @@ function renderPedidoPagoStatus() {
   await loadClientesSelect();
   await loadVendedoresSelect();
   await carregarFatorPadrao();
+  await carregarFatoresVendaTipo();
   renderGeraisItems();
   updateTotals();
 

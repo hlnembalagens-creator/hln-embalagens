@@ -290,6 +290,15 @@ body.admin-body {
   border-bottom: 2px solid var(--off-white);
 }
 
+/* Linhas de Etiquetas/Equipamentos — mesmo visual das linhas de vácuo (cabeçalho + campos) */
+@media (min-width: 901px) {
+  .items-header.items-header-gerais,
+  .item-row.item-row-gerais {
+    grid-template-columns: minmax(0, 2.2fr) minmax(0, 0.6fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  }
+}
+.item-row-gerais .calc-readout { overflow-wrap: anywhere; }
+
 .items-gerais-row {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 0.9fr) minmax(0, 0.9fr) auto;
