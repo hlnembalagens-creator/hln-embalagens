@@ -175,6 +175,7 @@ async function loadProdutosEstoque() {
 
   allProdutosEstoque = ordenarPorCodigoEstoque(data || []);
   renderEstoqueTable(allProdutosEstoque);
+  if (isAdminEstoque) renderConferenciaNcm();
 }
 
 document.getElementById('estoque-search').addEventListener('input', function (e) {
@@ -261,6 +262,18 @@ if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async fun
   btn.textContent = 'Salvando...';
 
   var novoNcm = document.getElementById('ajustar-ncm').value.trim() || null;
+  if (novoNcm) {
+    var valNcm = null;
+    try { valNcm = await validarNcm(novoNcm); } catch (e) { valNcm = null; }
+    if (valNcm && !valNcm.ok) {
+      errorEl.textContent = 'Esse NCM não existe na tabela oficial — confira o código (8 dígitos).';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Salvar';
+      return;
+    }
+    if (valNcm) novoNcm = valNcm.formatado;
+  }
 
   var { error } = await supabaseClient
     .from('produtos_catalogo')
@@ -366,6 +379,117 @@ function iniciarCardFatores() {
     statusEl.textContent = tipo.label + ': ' + atualizados + ' produto(s) recalculado(s)' + (falhas ? ', ' + falhas + ' com erro.' : '.');
     showToast('Fatores de ' + tipo.label + ' salvos.', 'ok');
     loadProdutosEstoque();
+  });
+}
+
+/* ===================== NCM POR TIPO DE PRODUTO (admin) ===================== */
+
+async function atualizarValidacaoNcm() {
+  var el = document.getElementById('ncm-validacao');
+  var valor = document.getElementById('ncm-valor').value;
+  if (!valor.trim()) { el.textContent = ''; return null; }
+  try {
+    var r = await validarNcm(valor);
+    if (r.ok) {
+      el.style.color = '#1a7a3c';
+      el.textContent = '✔ ' + r.formatado + ' existe na tabela oficial (' + r.vigencia + '): ' + r.descricao;
+    } else {
+      el.style.color = '#a92323';
+      el.textContent = '✖ Esse NCM não existe na tabela oficial — confira o código (8 dígitos).';
+    }
+    return r;
+  } catch (e) {
+    el.style.color = 'var(--gray-400)';
+    el.textContent = 'Não foi possível consultar a tabela oficial agora.';
+    return null;
+  }
+}
+
+async function renderConferenciaNcm() {
+  var el = document.getElementById('ncm-conferencia');
+  if (!el) return;
+  var tabela;
+  try { tabela = await carregarTabelaNcm(); } catch (e) { el.textContent = ''; return; }
+
+  var invalidos = [], vazios = [];
+  allProdutosEstoque.forEach(function (p) {
+    var d = ncmSoDigitos(p.ncm);
+    if (!d) vazios.push(p);
+    else if (!tabela.codigos[d]) invalidos.push(p);
+  });
+
+  if (!invalidos.length && !vazios.length) {
+    el.innerHTML = '<span style="color:#1a7a3c;">✔ Todos os ' + allProdutosEstoque.length + ' produtos têm NCM válido na tabela oficial (' + tabela.vigencia + ').</span>';
+    return;
+  }
+  var linhas = function (lista) {
+    return lista.slice(0, 8).map(function (p) { return p.nome_produto + (p.ncm ? ' (' + p.ncm + ')' : ''); }).join('; ') + (lista.length > 8 ? '; ...' : '');
+  };
+  el.innerHTML =
+    (invalidos.length ? '<p style="color:#a92323;"><strong>' + invalidos.length + ' produto(s) com NCM que não existe na tabela oficial:</strong> ' + linhas(invalidos) + '</p>' : '') +
+    (vazios.length ? '<p style="color:#8a6100;"><strong>' + vazios.length + ' produto(s) sem NCM:</strong> ' + linhas(vazios) + '</p>' : '') +
+    '<p style="color:var(--gray-400);">Defina a regra do tipo acima e clique em "Salvar e aplicar" para corrigir todos de uma vez, ou ajuste um a um em Editar.</p>';
+}
+
+function iniciarCardNcm() {
+  var selectTipo = document.getElementById('ncm-tipo');
+  var btn = document.getElementById('btn-salvar-ncm');
+  if (!selectTipo || !btn) return; // card some pra quem não é admin
+
+  selectTipo.innerHTML = NCM_TIPOS.map(function (t) { return '<option value="' + t.chave + '">' + t.label + '</option>'; }).join('');
+  var preencher = function () {
+    document.getElementById('ncm-valor').value = ncmRegras[selectTipo.value] || '';
+    atualizarValidacaoNcm();
+  };
+  preencher();
+  selectTipo.addEventListener('change', preencher);
+  document.getElementById('ncm-valor').addEventListener('input', atualizarValidacaoNcm);
+
+  var buscaTimer = null;
+  document.getElementById('ncm-busca').addEventListener('input', function (e) {
+    clearTimeout(buscaTimer);
+    buscaTimer = setTimeout(async function () {
+      var box = document.getElementById('ncm-busca-resultados');
+      try {
+        var achados = await buscarNcm(e.target.value);
+        box.innerHTML = achados.map(function (a) {
+          return '<div style="padding:4px 0;"><a href="#" data-usar-ncm="' + a.codigo + '" style="font-weight:700;">' + a.codigo + '</a> — ' + a.descricao + '</div>';
+        }).join('');
+        box.querySelectorAll('[data-usar-ncm]').forEach(function (link) {
+          link.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            document.getElementById('ncm-valor').value = link.dataset.usarNcm;
+            atualizarValidacaoNcm();
+          });
+        });
+      } catch (err) { box.textContent = ''; }
+    }, 250);
+  });
+
+  btn.addEventListener('click', async function () {
+    var tipo = NCM_TIPOS.find(function (t) { return t.chave === selectTipo.value; });
+    var r = await atualizarValidacaoNcm();
+    if (!r || !r.ok) { showToast('Informe um NCM que exista na tabela oficial.', 'error'); return; }
+
+    var produtosDoTipo = allProdutosEstoque.filter(function (p) {
+      var t = tipoNcmDoProduto(p.nome_produto);
+      return t && t.chave === tipo.chave;
+    });
+    if (!confirm('Salvar o NCM ' + r.formatado + ' como regra de ' + tipo.label + ' e aplicar em ' + produtosDoTipo.length + ' produto(s) desse tipo?')) return;
+
+    btn.disabled = true;
+    var { error } = await supabaseClient.from('configuracoes').upsert(
+      { chave: 'ncm_' + tipo.chave, valor: r.formatado, updated_at: new Date().toISOString() }, { onConflict: 'chave' });
+    if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); btn.disabled = false; return; }
+    ncmRegras[tipo.chave] = r.formatado;
+
+    var { error: erroAplicar } = await supabaseClient.from('produtos_catalogo').update({ ncm: r.formatado })
+      .in('id', produtosDoTipo.map(function (p) { return p.id; }));
+    btn.disabled = false;
+    if (erroAplicar) { showToast('Regra salva, mas falhou ao aplicar nos produtos: ' + erroAplicar.message, 'error'); return; }
+
+    showToast('NCM de ' + tipo.label + ' salvo e aplicado a ' + produtosDoTipo.length + ' produto(s).', 'ok');
+    await loadProdutosEstoque();
   });
 }
 
@@ -832,6 +956,7 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
         var { data: novoProduto } = await supabaseClient.from('produtos_catalogo').insert({
           nome_produto: item.descricao, codigo_produto: proximoCodigoSequencialEstoque(produtosAtuais),
           quantidade_estoque: item.quantidade, preco_custo: item.valor_unitario || null,
+          ncm: ncmAutomatico(item.descricao),
           preco_unitario: calcularPrecoVendaEmbalagemEstoque(item.descricao),
           created_by: currentUserIdEstoque
         }).select().single();
@@ -948,7 +1073,9 @@ document.getElementById('btn-exportar-lista-preco').addEventListener('click', fu
   loadProdutosEstoque();
   if (isAdminEstoque) {
     await carregarFatoresEstoque();
+    await carregarRegrasNcm();
     iniciarCardFatores();
+    iniciarCardNcm();
     loadPendentes();
   }
 })();

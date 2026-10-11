@@ -64,6 +64,35 @@
     <p id="fatores-status" style="display:none; margin-top:12px; font-size:0.85rem;"></p>
   </div>
 
+  <div class="admin-card" id="card-ncm" data-role-admin>
+    <h2>NCM por tipo de produto</h2>
+    <p style="color:var(--gray-400); margin-top:-10px; margin-bottom:16px; font-size:0.85rem;">
+      Defina o NCM de cada tipo uma vez: produto novo desse tipo já nasce com ele, sem ninguém digitar. O código é sempre
+      conferido na tabela oficial (Siscomex) antes de salvar.
+    </p>
+    <div class="form-grid" style="align-items:end;">
+      <div class="form-field">
+        <label for="ncm-tipo">Tipo de produto</label>
+        <select id="ncm-tipo"></select>
+      </div>
+      <div class="form-field">
+        <label for="ncm-valor">NCM</label>
+        <input type="text" id="ncm-valor" placeholder="0000.00.00">
+      </div>
+      <div class="form-field">
+        <label>&nbsp;</label>
+        <button type="button" class="btn btn-primary" id="btn-salvar-ncm">Salvar e aplicar ao tipo</button>
+      </div>
+    </div>
+    <p id="ncm-validacao" style="margin-top:10px; font-size:0.85rem;"></p>
+    <div class="form-field" style="max-width:420px; margin-top:12px;">
+      <label for="ncm-busca">Não sabe o código? Procure na tabela oficial</label>
+      <input type="text" id="ncm-busca" placeholder="Ex: etiquetas, sacos de outro plástico, 4821">
+    </div>
+    <div id="ncm-busca-resultados" style="margin-top:8px; font-size:0.85rem;"></div>
+    <div id="ncm-conferencia" style="margin-top:16px; font-size:0.85rem;"></div>
+  </div>
+
   <div class="admin-card" id="card-pendentes" data-role-admin style="display:none;">
     <h2>Importações pendentes de revisão</h2>
     <p style="color:var(--gray-400); margin-top:-10px; margin-bottom:16px; font-size:0.85rem;">
@@ -201,6 +230,7 @@
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
 <script src="js/calc-vacuo.js"></script>
+<script src="js/ncm.js"></script>
 <script src="js/caixas-etiqueta.js"></script>
 <script src="js/estoque.js"></script>
 </body>

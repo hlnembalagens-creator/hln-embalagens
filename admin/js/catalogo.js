@@ -42,6 +42,31 @@ function atualizarMargemReadout() {
 document.getElementById('preco_custo').addEventListener('input', atualizarMargemReadout);
 document.getElementById('preco_unitario').addEventListener('input', atualizarMargemReadout);
 
+/* ===================== NCM automático pelo tipo do produto ===================== */
+
+async function mostrarValidacaoNcmCatalogo() {
+  var hint = document.getElementById('ncm-hint');
+  var valor = document.getElementById('ncm').value;
+  if (!valor.trim()) { hint.textContent = 'Preenchido sozinho pelo tipo do produto (regra em Estoque).'; hint.style.color = ''; return null; }
+  try {
+    var r = await validarNcm(valor);
+    hint.style.color = r.ok ? '#1a7a3c' : '#a92323';
+    hint.textContent = r.ok ? '✔ ' + r.descricao : '✖ Esse NCM não existe na tabela oficial — confira o código.';
+    return r;
+  } catch (e) { return null; }
+}
+
+// Só preenche se o campo está vazio — nunca sobrescreve o que já está digitado/gravado.
+function preencherNcmAutomatico() {
+  var campo = document.getElementById('ncm');
+  if (!campo.value.trim()) {
+    var sugerido = ncmAutomatico(document.getElementById('nome_produto').value);
+    if (sugerido) campo.value = sugerido;
+  }
+  mostrarValidacaoNcmCatalogo();
+}
+document.getElementById('ncm').addEventListener('input', mostrarValidacaoNcmCatalogo);
+
 /* ===================== FATOR (embalagem) — mesma conta do Pedido ===================== */
 
 // Fatores padrão de cada tipo (definidos em Estoque > Fatores das embalagens).
@@ -101,6 +126,7 @@ document.getElementById('fator_venda').addEventListener('input', aplicarFatores)
 document.getElementById('nome_produto').addEventListener('input', function () {
   preencherFatoresPadraoDoTipo();
   aplicarFatores();
+  preencherNcmAutomatico();
 });
 
 async function loadProdutos() {
@@ -325,6 +351,16 @@ document.getElementById('produto-form').addEventListener('submit', async functio
 
   var codigo = document.getElementById('codigo_produto').value.trim();
   var ncm = document.getElementById('ncm').value.trim();
+  if (ncm) {
+    var valNcm = null;
+    try { valNcm = await validarNcm(ncm); } catch (e) { valNcm = null; }
+    if (valNcm && !valNcm.ok) {
+      errorEl.textContent = 'Esse NCM não existe na tabela oficial — confira o código (8 dígitos) ou deixe em branco.';
+      errorEl.style.display = 'block';
+      return;
+    }
+    if (valNcm) ncm = valNcm.formatado;
+  }
 
   if (!codigo || !ncm) {
     var faltando = [];
@@ -380,5 +416,6 @@ document.getElementById('produto-cancel-btn').addEventListener('click', function
   currentUserId = auth.session.user.id;
   currentUserRole = auth.profile.role;
   await carregarFatoresPadraoTipo();
+  await carregarRegrasNcm();
   loadProdutos();
 })();
