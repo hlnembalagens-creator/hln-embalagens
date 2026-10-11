@@ -348,6 +348,9 @@ function iniciarCardFatores() {
         var novaVenda = calcularValorEmbalagemEstoque(p.nome_produto, 'venda');
         if (novoCusto != null) novo.preco_custo = novoCusto;
         if (novaVenda != null) novo.preco_unitario = novaVenda;
+        // Grava o fator usado no próprio produto (aparece no Catálogo, onde dá pra ajustar por item).
+        if (novoCusto != null) novo.fator_custo = custo;
+        if (novaVenda != null) novo.fator_venda = venda;
         if (!Object.keys(novo).length) return Promise.resolve({ ignorado: true });
         return supabaseClient.from('produtos_catalogo').update(novo).eq('id', p.id);
       }));

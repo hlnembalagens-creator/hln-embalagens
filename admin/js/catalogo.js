@@ -42,6 +42,67 @@ function atualizarMargemReadout() {
 document.getElementById('preco_custo').addEventListener('input', atualizarMargemReadout);
 document.getElementById('preco_unitario').addEventListener('input', atualizarMargemReadout);
 
+/* ===================== FATOR (embalagem) — mesma conta do Pedido ===================== */
+
+// Fatores padrão de cada tipo (definidos em Estoque > Fatores das embalagens).
+var CHAVES_TIPO_FATOR = { 'Nylon Poli': 'nylon_poli', 'MRP': 'mrp', 'Termoencolhível': 'termoencolhivel' };
+var fatoresPadraoTipo = {};
+
+async function carregarFatoresPadraoTipo() {
+  var chaves = [];
+  Object.keys(CHAVES_TIPO_FATOR).forEach(function (k) { chaves.push('fator_custo_' + CHAVES_TIPO_FATOR[k], 'fator_venda_' + CHAVES_TIPO_FATOR[k]); });
+  var { data } = await supabaseClient.from('configuracoes').select('chave, valor').in('chave', chaves);
+  (data || []).forEach(function (r) { fatoresPadraoTipo[r.chave] = toNumber(r.valor); });
+}
+
+// Peso da fórmula do Pedido (larg(m) × comp(m) × espessura(µ)) lido do nome do produto.
+// Só existe pra embalagem com as 3 medidas no nome — Saco PP/PE e demais produtos voltam null.
+function pesoDaEmbalagem(nome) {
+  var categoria = categoriaEmbalagemDoProduto(nome);
+  if (!categoria || !CHAVES_TIPO_FATOR[categoria.label]) return null;
+  var m = extrairMedidasVacuoDoNome(nome);
+  if (!m.largura || !m.comprimento || !m.espessura) return null;
+  return calcPesoVacuo(m.largura / 100, m.comprimento / 100, m.espessura);
+}
+
+function arredondarPreco(n) { return Math.round(n * 10000) / 10000; }
+
+// Recalcula Custo/Venda a partir dos fatores preenchidos (campo vazio = não mexe).
+function aplicarFatores() {
+  var peso = pesoDaEmbalagem(document.getElementById('nome_produto').value);
+  var hint = document.getElementById('peso-readout-hint');
+  if (peso == null) {
+    hint.textContent = 'Fator vale só pra embalagem (Nylon Poli, MRP, Termoencolhível) com largura x comprimento x espessura no nome.';
+    return;
+  }
+  hint.textContent = 'Peso da fórmula: ' + peso.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + ' (larg × comp × esp). Custo = peso × fator.';
+  var fatorCusto = toNumber(document.getElementById('fator_custo').value);
+  var fatorVenda = toNumber(document.getElementById('fator_venda').value);
+  if (fatorCusto > 0) document.getElementById('preco_custo').value = arredondarPreco(peso * fatorCusto);
+  if (fatorVenda > 0) document.getElementById('preco_unitario').value = arredondarPreco(peso * fatorVenda);
+  atualizarMargemReadout();
+}
+
+// Preenche os fatores vazios com o padrão do tipo (ex: Fator Venda do MRP definido em Estoque).
+function preencherFatoresPadraoDoTipo() {
+  var categoria = categoriaEmbalagemDoProduto(document.getElementById('nome_produto').value);
+  var chave = categoria ? CHAVES_TIPO_FATOR[categoria.label] : null;
+  if (!chave) return;
+  if (!document.getElementById('fator_custo').value && fatoresPadraoTipo['fator_custo_' + chave] > 0) {
+    document.getElementById('fator_custo').value = fatoresPadraoTipo['fator_custo_' + chave];
+  }
+  if (!document.getElementById('fator_venda').value && fatoresPadraoTipo['fator_venda_' + chave] > 0) {
+    document.getElementById('fator_venda').value = fatoresPadraoTipo['fator_venda_' + chave];
+  }
+}
+
+document.getElementById('fator_custo').addEventListener('input', aplicarFatores);
+document.getElementById('fator_venda').addEventListener('input', aplicarFatores);
+document.getElementById('nome_produto').addEventListener('input', function () {
+  preencherFatoresPadraoDoTipo();
+  aplicarFatores();
+});
+
 async function loadProdutos() {
   var { data, error } = await supabaseClient
     .from('produtos_catalogo')
@@ -101,6 +162,14 @@ function renderProdutosTable(list) {
       document.getElementById('ncm').value = produto.ncm || '';
       document.getElementById('preco_custo').value = produto.preco_custo != null ? produto.preco_custo : '';
       document.getElementById('preco_unitario').value = produto.preco_unitario != null ? produto.preco_unitario : '';
+      document.getElementById('fator_custo').value = produto.fator_custo != null ? produto.fator_custo : '';
+      document.getElementById('fator_venda').value = produto.fator_venda != null ? produto.fator_venda : '';
+      preencherFatoresPadraoDoTipo();
+      // Só calcula sozinho o que ainda está vazio — nunca sobrescreve um valor já gravado ao abrir.
+      var custoAntes = document.getElementById('preco_custo').value, vendaAntes = document.getElementById('preco_unitario').value;
+      aplicarFatores();
+      if (custoAntes) document.getElementById('preco_custo').value = custoAntes;
+      if (vendaAntes) document.getElementById('preco_unitario').value = vendaAntes;
       atualizarMargemReadout();
       document.getElementById('form-title').textContent = 'Editar produto';
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -255,7 +324,9 @@ document.getElementById('produto-form').addEventListener('submit', async functio
     codigo_produto: codigo || null,
     ncm: ncm || null,
     preco_custo: document.getElementById('preco_custo').value ? toNumber(document.getElementById('preco_custo').value) : null,
-    preco_unitario: document.getElementById('preco_unitario').value ? toNumber(document.getElementById('preco_unitario').value) : null
+    preco_unitario: document.getElementById('preco_unitario').value ? toNumber(document.getElementById('preco_unitario').value) : null,
+    fator_custo: document.getElementById('fator_custo').value ? toNumber(document.getElementById('fator_custo').value) : null,
+    fator_venda: document.getElementById('fator_venda').value ? toNumber(document.getElementById('fator_venda').value) : null
   };
 
   var produtoId = document.getElementById('produto-id').value;
@@ -291,5 +362,6 @@ document.getElementById('produto-cancel-btn').addEventListener('click', resetPro
   if (!auth) return;
   currentUserId = auth.session.user.id;
   currentUserRole = auth.profile.role;
+  await carregarFatoresPadraoTipo();
   loadProdutos();
 })();

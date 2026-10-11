@@ -60,6 +60,16 @@
           <span class="hint">Opcional — pode preencher depois.</span>
         </div>
         <div class="form-field">
+          <label for="fator_custo">Fator Custo (compra)</label>
+          <input type="text" inputmode="decimal" id="fator_custo">
+          <span class="hint" id="peso-readout-hint">Embalagem: custo = peso × fator, mesma conta do Pedido.</span>
+        </div>
+        <div class="form-field">
+          <label for="fator_venda">Fator Venda</label>
+          <input type="text" inputmode="decimal" id="fator_venda">
+          <span class="hint">Embalagem: venda = peso × fator.</span>
+        </div>
+        <div class="form-field">
           <label for="preco_custo">Preço de Custo Unitário (R$)</label>
           <input type="text" inputmode="decimal" id="preco_custo">
           <span class="hint">Quanto pagamos pro fornecedor. Preenchido sozinho quando vem de uma leitura de NF.</span>
@@ -120,6 +130,7 @@
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
 <script src="js/excel-utils.js"></script>
+<script src="js/calc-vacuo.js"></script>
 <script src="js/catalogo.js"></script>
 </body>
 </html>
