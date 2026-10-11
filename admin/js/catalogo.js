@@ -116,6 +116,20 @@ async function loadProdutos() {
 
   allProdutos = data || [];
   renderProdutosTable(allProdutos);
+  preencherProximoCodigo();
+}
+
+// Produto novo já abre com o próximo código da sequência (maior código usado + 1);
+// dá pra trocar à mão. Produto em edição nunca é mexido.
+function preencherProximoCodigo() {
+  if (document.getElementById('produto-id').value) return;
+  var campo = document.getElementById('codigo_produto');
+  if (campo.value) return;
+  var maior = allProdutos.reduce(function (acc, p) {
+    var n = parseInt(p.codigo_produto, 10);
+    return !isNaN(n) && n > acc ? n : acc;
+  }, 0);
+  campo.value = String(maior + 1);
 }
 
 function renderProdutosTable(list) {
@@ -355,7 +369,10 @@ document.getElementById('produto-form').addEventListener('submit', async functio
   loadProdutos();
 });
 
-document.getElementById('produto-cancel-btn').addEventListener('click', resetProdutoForm);
+document.getElementById('produto-cancel-btn').addEventListener('click', function () {
+  resetProdutoForm();
+  preencherProximoCodigo();
+});
 
 (async function () {
   var auth = await window.ADMIN_AUTH_READY;

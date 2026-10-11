@@ -6,9 +6,7 @@
 var CATEGORIAS_EMBALAGEM_VACUO = [
   { label: 'Nylon Poli', match: 'NYLON POLI' },
   { label: 'MRP', match: 'MRP' },
-  { label: 'Termoencolhível', match: 'TERMOENCOLHIVEL' },
-  { label: 'Saco PP', match: 'SACO PP' },
-  { label: 'Saco PE', match: 'SACO PE' }
+  { label: 'Termoencolhível', match: 'TERMOENCOLHIVEL' }
 ];
 
 function categoriaEmbalagemDoProduto(nomeProduto) {

@@ -20,7 +20,8 @@ function medidasEtiqueta(nomeProduto) {
   var nome = (nomeProduto || '').toUpperCase();
   if (nome.indexOf('ETQ') === -1 && nome.indexOf('ETIQUETA') === -1) return null;
   var larg = nome.match(/(\d{2,3})\s*X/);
-  var metr = nome.match(/(\d{2})\s*M(?![A-Z])/);
+  // metragem escrita como 21M, 30 Mts, 30mts, 30 metros...
+  var metr = nome.match(/(\d{2})\s*(?:MTS?|METROS?|M)(?![A-Z])/);
   if (!larg) return null;
   return { largura: parseInt(larg[1], 10), metragem: metr ? parseInt(metr[1], 10) : null };
 }
