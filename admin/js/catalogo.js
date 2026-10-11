@@ -140,7 +140,14 @@ async function loadProdutos() {
     return;
   }
 
-  allProdutos = data || [];
+  // Exibe em ordem de código (1, 2, 3...) — numérico, não alfabético; sem código vão pro fim.
+  allProdutos = (data || []).slice().sort(function (a, b) {
+    var ca = parseInt(a.codigo_produto, 10), cb = parseInt(b.codigo_produto, 10);
+    if (isNaN(ca) && isNaN(cb)) return (a.nome_produto || '').localeCompare(b.nome_produto || '');
+    if (isNaN(ca)) return 1;
+    if (isNaN(cb)) return -1;
+    return ca - cb;
+  });
   renderProdutosTable(allProdutos);
   preencherProximoCodigo();
 }

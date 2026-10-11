@@ -147,7 +147,7 @@ function renderEstoqueTable(list) {
         btn.disabled = false;
         return;
       }
-      showToast('Produto excluído.', 'ok');
+      showToast('Produto excluído. Use "Reorganizar códigos" pra fechar o buraco na numeração.', 'ok');
       loadProdutosEstoque();
     });
   });
@@ -381,6 +381,19 @@ function iniciarCardFatores() {
     loadProdutosEstoque();
   });
 }
+
+/* ===================== REORGANIZAR CÓDIGOS (admin) ===================== */
+
+var btnResequenciar = document.getElementById('btn-resequenciar-codigos');
+if (btnResequenciar) btnResequenciar.addEventListener('click', async function () {
+  if (!confirm('Renumerar os produtos em sequência (1, 2, 3...), mantendo a ordem atual e fechando os buracos? Os códigos de alguns produtos vão mudar.')) return;
+  btnResequenciar.disabled = true;
+  var { data, error } = await supabaseClient.rpc('resequenciar_codigos_produtos');
+  btnResequenciar.disabled = false;
+  if (error) { showToast('Erro ao reorganizar: ' + error.message, 'error'); return; }
+  showToast(data ? data + ' código(s) ajustado(s). Numeração em sequência.' : 'A numeração já estava em sequência.', 'ok');
+  loadProdutosEstoque();
+});
 
 /* ===================== NCM POR TIPO DE PRODUTO (admin) ===================== */
 
