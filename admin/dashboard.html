@@ -36,18 +36,34 @@
 <main class="admin-main">
   <h1 class="admin-title">Dashboard</h1>
 
+  <div class="admin-card" style="padding:18px 24px;">
+    <div class="form-grid" style="align-items:end;">
+      <div class="form-field">
+        <label for="filtro-mes">Mês</label>
+        <select id="filtro-mes"></select>
+      </div>
+      <div class="form-field">
+        <label for="filtro-ano">Ano</label>
+        <select id="filtro-ano"></select>
+      </div>
+      <div class="form-field span-2">
+        <span class="hint">O filtro vale pros números, gráficos, rankings e mapa. A recência de compra (semáforo) e os clientes ativos sempre olham pra hoje.</span>
+      </div>
+    </div>
+  </div>
+
   <div class="kpi-grid" id="kpi-grid">
     <div class="kpi-card kpi-accent-green">
-      <div class="kpi-label">Faturamento do mês</div>
+      <div class="kpi-label" id="kpi-faturamento-label">Faturamento do período</div>
       <div class="kpi-value" id="kpi-faturamento">—</div>
       <div class="kpi-sub" id="kpi-faturamento-sub"></div>
     </div>
     <div class="kpi-card kpi-accent-navy">
-      <div class="kpi-label">Pedidos no mês</div>
+      <div class="kpi-label" id="kpi-pedidos-label">Pedidos no período</div>
       <div class="kpi-value" id="kpi-pedidos">—</div>
     </div>
     <div class="kpi-card kpi-accent-amber">
-      <div class="kpi-label">Ticket médio (mês)</div>
+      <div class="kpi-label" id="kpi-ticket-label">Ticket médio (período)</div>
       <div class="kpi-value" id="kpi-ticket">—</div>
     </div>
     <div class="kpi-card">
@@ -87,6 +103,17 @@
     <div class="dashboard-card-title">Mapa de calor — localidade dos clientes que mais compram</div>
     <div class="dashboard-card-hint">Quanto mais forte a cor, maior o volume de compras vindo daquela cidade.</div>
     <div id="heatmap-uf" class="heatmap-grid"><p class="dashboard-empty">Carregando...</p></div>
+  </div>
+
+  <div class="admin-card">
+    <div class="dashboard-card-title">Conferência — pedidos do período</div>
+    <div class="dashboard-card-hint" id="conferencia-resumo"></div>
+    <div class="table-scroll">
+      <table class="admin-table">
+        <thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Valor</th><th>Pagamento</th></tr></thead>
+        <tbody id="conferencia-tbody"><tr><td colspan="5">Carregando...</td></tr></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="admin-card">
