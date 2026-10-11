@@ -33,6 +33,7 @@ var filtroAno = '';          // '' = todos
 var graficoMes = null;
 var graficoPago = null;
 var erroProdutos = false;
+var podeMarcarNf = false;
 
 function noPeriodo(dataIso) {
   var d = new Date(dataIso);
@@ -54,7 +55,7 @@ function descricaoPeriodo() {
 async function buscarPedidosDashboard(vendedorId) {
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('numero, cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor)')
+    .select('id, numero, cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, nf_emitida, nf_numero, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor)')
     .eq('tipo', 'pedido')
     .order('created_at', { ascending: false });
 
@@ -155,6 +156,43 @@ function renderKpisEGraficos() {
   }
 }
 
+/* ===================== FATURAMENTO DO ANO x LIMITE MEI ===================== */
+
+// MEI: R$ 81.000/ano; no ano de abertura o limite é proporcional (R$ 6.750 por mês de
+// atividade, contando o mês de abertura). Abertura da HLN: 20/05/2026 (dado público do CNPJ).
+var MEI_ABERTURA = { ano: 2026, mes: 4 }; // mês 0-based: maio
+var MEI_LIMITE_ANUAL = 81000;
+
+function limiteMeiDoAno(ano) {
+  if (ano < MEI_ABERTURA.ano) return null;
+  if (ano === MEI_ABERTURA.ano) return 6750 * (12 - MEI_ABERTURA.mes);
+  return MEI_LIMITE_ANUAL;
+}
+
+function renderMei() {
+  var card = document.getElementById('mei-total');
+  if (!card) return; // card some pra vendedor
+  var ano = filtroAno !== '' ? Number(filtroAno) : new Date().getFullYear();
+  var doAno = todosPedidos.filter(function (p) { return new Date(p.created_at).getFullYear() === ano; });
+  var total = somaValor(doAno);
+  var comNf = somaValor(doAno.filter(function (p) { return p.nf_emitida; }));
+  var limite = limiteMeiDoAno(ano);
+
+  document.getElementById('mei-total-label').textContent = 'Receita total ' + ano;
+  document.getElementById('mei-total').textContent = formatBRLDash(total);
+  document.getElementById('mei-total-sub').textContent = doAno.length + ' pedido(s) — por data da venda';
+  document.getElementById('mei-com-nf').textContent = formatBRLDash(comNf);
+  document.getElementById('mei-sem-nf').textContent = formatBRLDash(total - comNf);
+
+  var barra = document.getElementById('mei-barra');
+  var texto = document.getElementById('mei-limite-texto');
+  if (!limite) { barra.style.width = '0'; texto.textContent = ''; return; }
+  var pct = (total / limite) * 100;
+  barra.style.width = Math.min(pct, 100) + '%';
+  barra.style.background = pct >= 100 ? '#d63a3a' : (pct >= 80 ? '#e0a800' : '#1fa855');
+  texto.textContent = 'Limite de ' + ano + ': ' + formatBRLDash(limite) + ' — usado ' + pct.toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '% (restam ' + formatBRLDash(Math.max(limite - total, 0)) + '). Confirme o limite com o seu contador.';
+}
+
 /* ===================== CONFERÊNCIA: PEDIDOS DO PERÍODO ===================== */
 
 function renderConferencia() {
@@ -165,15 +203,27 @@ function renderConferencia() {
   document.getElementById('conferencia-resumo').textContent = pedidos.length + ' pedido(s) em ' + descricaoPeriodo() + ' — total ' + formatBRLDash(somaValor(pedidos));
 
   if (!pedidos.length) {
-    tbody.innerHTML = '<tr><td colspan="5">Nenhum pedido confirmado nesse período.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6">Nenhum pedido confirmado nesse período.</td></tr>';
     return;
   }
   tbody.innerHTML = pedidos.map(function (p) {
     var nome = p.clientes.razao_social + (p.clientes.nome_fantasia ? ' (' + p.clientes.nome_fantasia + ')' : '');
     return '<tr><td>' + p.numero + '</td><td>' + formatDataDash(p.created_at) + '</td><td>' + nome + '</td>' +
       '<td>' + formatBRLDash(p.valor_total_a_pagar) + '</td>' +
-      '<td>' + (p.pago ? '<span class="badge badge-ok">Pago</span>' : '<span class="badge badge-warning">Pendente</span>') + '</td></tr>';
+      '<td>' + (p.pago ? '<span class="badge badge-ok">Pago</span>' : '<span class="badge badge-warning">Pendente</span>') + '</td>' +
+      '<td><input type="checkbox" data-nf="' + p.id + '"' + (p.nf_emitida ? ' checked' : '') + (podeMarcarNf ? '' : ' disabled') + ' title="Marcar se essa venda teve nota fiscal"></td></tr>';
   }).join('');
+
+  tbody.querySelectorAll('[data-nf]').forEach(function (chk) {
+    chk.addEventListener('change', async function () {
+      var pedido = todosPedidos.find(function (p) { return p.id === chk.dataset.nf; });
+      if (!pedido) return;
+      var { error } = await supabaseClient.from('pedidos').update({ nf_emitida: chk.checked, nf_numero: chk.checked ? pedido.nf_numero : null }).eq('id', pedido.id);
+      if (error) { chk.checked = !chk.checked; alert('Erro ao salvar: ' + error.message); return; }
+      pedido.nf_emitida = chk.checked;
+      renderMei();
+    });
+  });
 }
 
 /* ===================== TOP CLIENTES + SEMÁFORO ===================== */
@@ -332,6 +382,7 @@ function renderProdutosRanking() {
 /* ===================== FILTRO (mês/ano) ===================== */
 
 function renderTudo() {
+  renderMei();
   renderKpisEGraficos();
   renderClientesRanking();
   renderProdutosRanking();
@@ -384,6 +435,7 @@ function iniciarFiltros() {
     return;
   }
   todosPedidos = resultado.pedidos;
+  podeMarcarNf = !vendedorId;
 
   var itensOk = await carregarItensProdutos(vendedorId);
   erroProdutos = !itensOk;

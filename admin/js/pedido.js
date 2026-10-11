@@ -131,6 +131,11 @@ async function loadClientesSelect() {
   }).join('');
 }
 
+function atualizarCampoNfNumero() {
+  document.getElementById('campo-nf-numero').style.display = document.getElementById('nf_emitida').checked ? '' : 'none';
+}
+document.getElementById('nf_emitida').addEventListener('change', atualizarCampoNfNumero);
+
 // Pedido pra Altisvac sai numa planilha padrão — o botão de exportar só aparece
 // quando o cliente selecionado é a Altisvac.
 function atualizarModoAltisvac() {
@@ -774,6 +779,8 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
     transportadora_endereco: document.getElementById('transp_endereco').value || null,
     transportadora_telefone: document.getElementById('transp_tel').value || null,
     observacao: document.getElementById('observacao').value || null,
+    nf_emitida: document.getElementById('nf_emitida').checked,
+    nf_numero: document.getElementById('nf_emitida').checked ? (document.getElementById('nf_numero').value.trim() || null) : null,
     forma_pagamento: formaPagamento,
     boleto_quantidade: formaPagamento === 'boleto' ? (toNumber(document.getElementById('boleto_quantidade').value) || null) : null,
     boleto_dias: formaPagamento === 'boleto' ? (toNumber(document.getElementById('boleto_dias').value) || null) : null,
@@ -1331,6 +1338,9 @@ async function iniciarEdicaoPedido(pedidoId) {
   document.getElementById('transp_endereco').value = pedido.transportadora_endereco || '';
   document.getElementById('transp_tel').value = pedido.transportadora_telefone || '';
   document.getElementById('observacao').value = pedido.observacao || '';
+  document.getElementById('nf_emitida').checked = !!pedido.nf_emitida;
+  document.getElementById('nf_numero').value = pedido.nf_numero || '';
+  atualizarCampoNfNumero();
 
   var formaSelect = document.getElementById('forma_pagamento');
   formaSelect.value = pedido.forma_pagamento || '';

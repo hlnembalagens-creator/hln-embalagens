@@ -72,6 +72,18 @@
     </div>
   </div>
 
+  <div class="admin-card" data-role-admin>
+    <div class="dashboard-card-title">Faturamento do ano x limite MEI</div>
+    <div class="dashboard-card-hint">O limite do MEI conta TODA a receita (com e sem nota). Vendas marcadas com NF aparecem separadas — marque na tabela "Conferência" abaixo ou no Histórico do cliente.</div>
+    <div class="kpi-grid" style="margin-bottom:12px;">
+      <div class="kpi-card kpi-accent-navy"><div class="kpi-label" id="mei-total-label">Receita total</div><div class="kpi-value" id="mei-total">—</div><div class="kpi-sub" id="mei-total-sub"></div></div>
+      <div class="kpi-card kpi-accent-green"><div class="kpi-label">Com NF</div><div class="kpi-value" id="mei-com-nf">—</div></div>
+      <div class="kpi-card kpi-accent-amber"><div class="kpi-label">Sem NF</div><div class="kpi-value" id="mei-sem-nf">—</div></div>
+    </div>
+    <div style="background:var(--off-white); border-radius:999px; height:14px; overflow:hidden;"><div id="mei-barra" style="height:100%; width:0; background:#1fa855; transition:width .3s;"></div></div>
+    <div class="dashboard-card-hint" id="mei-limite-texto" style="margin-top:8px; margin-bottom:0;"></div>
+  </div>
+
   <div class="dashboard-grid dashboard-grid-2" style="margin-bottom:20px;">
     <div class="admin-card">
       <div class="dashboard-card-title">Vendas por mês</div>
@@ -110,8 +122,8 @@
     <div class="dashboard-card-hint" id="conferencia-resumo"></div>
     <div class="table-scroll">
       <table class="admin-table">
-        <thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Valor</th><th>Pagamento</th></tr></thead>
-        <tbody id="conferencia-tbody"><tr><td colspan="5">Carregando...</td></tr></tbody>
+        <thead><tr><th>Nº</th><th>Data</th><th>Cliente</th><th>Valor</th><th>Pagamento</th><th>Com NF</th></tr></thead>
+        <tbody id="conferencia-tbody"><tr><td colspan="6">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>

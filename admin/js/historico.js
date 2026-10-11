@@ -204,6 +204,13 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
         : '<span class="badge badge-warning">Pendente de pagamento</span>';
     }
 
+    var nfBadge = pedido.tipo === 'pedido'
+      ? (pedido.nf_emitida ? ' <span class="badge badge-ok">Com NF' + (pedido.nf_numero ? ' nº ' + pedido.nf_numero : '') + '</span>' : ' <span class="badge badge-warning">Sem NF</span>')
+      : '';
+    var botaoNf = pedido.tipo === 'pedido'
+      ? '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" data-alternar-nf="' + pedido.id + '">' + (pedido.nf_emitida ? 'Marcar sem NF' : 'Marcar com NF') + '</button>'
+      : '';
+
     var botaoExcluir = currentUserRole !== 'admin1'
       ? '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem; color:#a92323; border-color:#a92323;" data-excluir="' + pedido.id + '">Excluir</button>'
       : '';
@@ -215,12 +222,13 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
     var acoes = '<div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">' +
       '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" data-editar="' + pedido.id + '">Editar</button>' +
       botaoExportarAltisvac +
+      botaoNf +
       acoesEspecificas +
       botaoExcluir +
     '</div>';
 
     return '<div style="border-bottom:1px solid var(--off-white); padding:14px 0;">' +
-      '<strong>' + tipoLabel + '</strong> <span class="badge ' + badgeClass + '">' + badgeText + '</span> ' + pagoBadge + ' — ' + dataStr +
+      '<strong>' + tipoLabel + '</strong> <span class="badge ' + badgeClass + '">' + badgeText + '</span> ' + pagoBadge + nfBadge + ' — ' + dataStr +
       ' &nbsp; <span style="color:var(--gray-400);">' + formatarFormaPagamentoHistorico(pedido) + '</span>' +
       '<ul style="margin:8px 0 8px 20px; font-size:0.88rem;">' + itensVacuo + itensGerais + '</ul>' +
       '<strong>Valor total a pagar: ' + formatBRLHistorico(pedido.valor_total_a_pagar) + '</strong>' +
@@ -257,6 +265,24 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
         btn.disabled = false;
         btn.textContent = textoOriginal;
       }
+    });
+  });
+
+  conteudo.querySelectorAll('[data-alternar-nf]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var pedido = data.find(function (p) { return p.id === btn.dataset.alternarNf; });
+      if (!pedido) return;
+      var marcar = !pedido.nf_emitida;
+      var numero = null;
+      if (marcar) {
+        var resp = prompt('Número da NF (opcional — pode deixar em branco):', pedido.nf_numero || '');
+        if (resp === null) return;
+        numero = resp.trim() || null;
+      }
+      var { error } = await supabaseClient.from('pedidos').update({ nf_emitida: marcar, nf_numero: marcar ? numero : null }).eq('id', pedido.id);
+      if (error) { alert('Erro: ' + error.message); return; }
+      loadHistoricoCliente(clienteId, containerId, onAtualizado);
+      if (typeof onAtualizado === 'function') onAtualizado();
     });
   });
 
