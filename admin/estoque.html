@@ -19,7 +19,6 @@
     <a href="pedido.html">Pedido</a>
     <a href="vendas.html">Vendas</a>
     <a href="clientes.html">Clientes</a>
-    <a href="catalogo.html" data-role-admin>Catálogo</a>
     <a href="estoque.html" class="active">Estoque</a>
     <a href="financeiro.html" data-role-admin>Financeiro</a>
     <a href="calculadora-custo.html" data-role-admin>Calculadora de Custo</a>
@@ -35,6 +34,7 @@
 
 <main class="admin-main">
   <h1 class="admin-title">Estoque</h1>
+  <p style="color:var(--gray-400); margin-top:-16px; margin-bottom:20px; font-size:0.9rem;">Cadastro único de produtos: estoque, custo, venda, fatores e NCM. Os produtos daqui ficam disponíveis na tela de Pedido.</p>
 
   <div class="admin-card" id="card-fatores" data-role-admin>
     <h2>Fatores das embalagens</h2>
@@ -170,11 +170,16 @@
   </div>
 
   <div class="admin-card">
-    <div class="form-actions no-print" style="margin-bottom:14px; justify-content:space-between;">
-      <input type="text" id="estoque-search" class="table-search" placeholder="Buscar por nome, código..." style="margin-bottom:0;">
+    <input type="text" id="estoque-search" class="table-search" placeholder="Buscar por nome, código..." style="margin-bottom:12px;">
+    <div class="form-actions no-print" style="margin-top:0; margin-bottom:14px;">
+      <button type="button" class="btn btn-primary" id="btn-novo-produto" data-role-admin>+ Novo produto</button>
       <button type="button" class="btn btn-outline" id="btn-exportar-lista-preco" data-role-admin>Exportar Lista de Preço (PDF)</button>
+      <button type="button" class="btn btn-outline" id="btn-exportar-produtos" data-role-admin>Exportar Excel</button>
+      <button type="button" class="btn btn-outline" id="btn-importar-produtos" data-role-admin>Importar Excel</button>
+      <input type="file" id="input-importar-produtos" accept=".xlsx,.xls,.csv" style="display:none;">
       <button type="button" class="btn btn-outline" id="btn-resequenciar-codigos" data-role-admin title="Fecha os buracos da numeração depois de excluir produtos: 1, 2, 3...">Reorganizar códigos (1, 2, 3…)</button>
     </div>
+    <p id="importar-produtos-status" style="display:none; margin-bottom:14px; font-size:0.85rem;"></p>
     <div class="table-scroll">
       <table class="admin-table">
         <thead id="estoque-thead"></thead>
@@ -188,33 +193,52 @@
 
 <div class="print-sheet" id="lista-preco-sheet"></div>
 
-<!-- MODAL AJUSTAR PRODUTO (admin) -->
+<!-- MODAL PRODUTO: NOVO / EDITAR (admin) -->
 <div class="modal-overlay" id="modal-ajustar-estoque">
-  <div class="modal-box" style="max-width:420px;">
-    <h3>Ajustar produto</h3>
-    <div class="form-field" style="margin-bottom:16px;">
-      <label for="ajustar-nome">Descrição</label>
-      <input type="text" id="ajustar-nome">
-      <span class="hint">Corrige aqui até o próximo romaneio vir com a descrição certa.</span>
+  <div class="modal-box" style="max-width:620px;">
+    <h3 id="ajustar-titulo">Produto</h3>
+    <div class="form-grid" style="margin-bottom:12px;">
+      <div class="form-field span-2">
+        <label for="ajustar-nome">Descrição *</label>
+        <input type="text" id="ajustar-nome">
+      </div>
+      <div class="form-field">
+        <label for="ajustar-codigo">Código</label>
+        <input type="text" id="ajustar-codigo">
+        <span class="hint">Novo produto já vem com o próximo da sequência.</span>
+      </div>
+      <div class="form-field">
+        <label for="ajustar-ncm">NCM</label>
+        <input type="text" id="ajustar-ncm">
+        <span class="hint" id="ajustar-ncm-hint">Preenchido sozinho pelo tipo do produto.</span>
+      </div>
+      <div class="form-field">
+        <label for="ajustar-fator-custo">Fator Custo (compra)</label>
+        <input type="text" inputmode="decimal" id="ajustar-fator-custo">
+        <span class="hint" id="ajustar-peso-hint">Embalagem: custo = peso × fator.</span>
+      </div>
+      <div class="form-field">
+        <label for="ajustar-fator-venda">Fator Venda</label>
+        <input type="text" inputmode="decimal" id="ajustar-fator-venda">
+        <span class="hint">Embalagem: venda = peso × fator.</span>
+      </div>
+      <div class="form-field">
+        <label for="ajustar-custo">Custo unitário (R$)</label>
+        <input type="text" inputmode="decimal" id="ajustar-custo">
+      </div>
+      <div class="form-field">
+        <label for="ajustar-preco">Preço de venda unitário (R$)</label>
+        <input type="text" inputmode="decimal" id="ajustar-preco">
+      </div>
+      <div class="form-field">
+        <label for="ajustar-quantidade">Quantidade em estoque</label>
+        <input type="text" inputmode="decimal" id="ajustar-quantidade">
+      </div>
+      <div class="form-field">
+        <label>Margem</label>
+        <span class="calc-readout" id="ajustar-margem">—</span>
+      </div>
     </div>
-    <div class="form-field" style="margin-bottom:16px;">
-      <label for="ajustar-ncm">NCM</label>
-      <input type="text" id="ajustar-ncm">
-      <span class="hint">O sistema não inventa NCM sozinho — preenche aqui quando souber.</span>
-    </div>
-    <div class="form-field" style="margin-bottom:16px;">
-      <label for="ajustar-quantidade">Quantidade em estoque</label>
-      <input type="text" inputmode="decimal" id="ajustar-quantidade">
-    </div>
-    <div class="form-field" style="margin-bottom:16px;">
-      <label for="ajustar-custo">Custo unitário (R$)</label>
-      <input type="text" inputmode="decimal" id="ajustar-custo">
-    </div>
-    <div class="form-field" style="margin-bottom:16px;">
-      <label for="ajustar-preco">Preço de venda unitário (R$)</label>
-      <input type="text" inputmode="decimal" id="ajustar-preco">
-    </div>
-    <p style="margin-bottom:16px; color:var(--gray-400); font-size:0.85rem;">Margem: <strong id="ajustar-margem">—</strong></p>
     <p id="ajustar-error" class="error-message" style="display:none;"></p>
     <div class="form-actions">
       <button type="button" class="btn btn-primary" id="ajustar-confirmar">Salvar</button>
@@ -226,10 +250,12 @@
 <div id="toast-container"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="js/admin-config.js"></script>
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
+<script src="js/excel-utils.js"></script>
 <script src="js/calc-vacuo.js"></script>
 <script src="js/ncm.js"></script>
 <script src="js/caixas-etiqueta.js"></script>

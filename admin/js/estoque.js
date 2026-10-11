@@ -187,9 +187,18 @@ document.getElementById('estoque-search').addEventListener('input', function (e)
   renderEstoqueTable(filtered);
 });
 
-/* ===================== AJUSTAR QUANTIDADE (admin) ===================== */
+/* ===================== PRODUTO: NOVO / EDITAR (admin) ===================== */
 
-var produtoEmAjuste = null;
+var produtoEmAjuste = null; // produto em edição; null = cadastrando um novo
+
+function pesoEmbalagemEstoque(nome) {
+  if (!tipoFatorDoProduto(nome)) return null;
+  var m = extrairMedidasVacuoDoNome(nome);
+  if (!m.largura || !m.comprimento || !m.espessura) return null;
+  return calcPesoVacuo(m.largura / 100, m.comprimento / 100, m.espessura);
+}
+
+function arredondarPrecoEstoque(n) { return Math.round(n * 10000) / 10000; }
 
 function atualizarMargemPreviewAjuste() {
   var custo = toNumberEstoque(document.getElementById('ajustar-custo').value);
@@ -198,20 +207,98 @@ function atualizarMargemPreviewAjuste() {
   document.getElementById('ajustar-margem').textContent = formatarMargemEstoque(margem);
 }
 
-function abrirModalAjustar(produto) {
-  produtoEmAjuste = produto;
-  document.getElementById('ajustar-nome').value = produto.nome_produto || '';
-  document.getElementById('ajustar-ncm').value = produto.ncm || '';
-  document.getElementById('ajustar-quantidade').value = produto.quantidade_estoque || 0;
-  document.getElementById('ajustar-custo').value = produto.preco_custo != null ? produto.preco_custo : '';
-  document.getElementById('ajustar-preco').value = produto.preco_unitario != null ? produto.preco_unitario : '';
+// Fatores vazios recebem o padrão do tipo (card "Fatores das embalagens") e o NCM
+// vazio recebe a regra do tipo (card "NCM por tipo") — nunca sobrescreve o que já está lá.
+function preencherPadroesDoTipoModal() {
+  var nome = document.getElementById('ajustar-nome').value;
+  var tipo = tipoFatorDoProduto(nome);
+  if (tipo && fatoresEstoque[tipo.chave]) {
+    var fc = document.getElementById('ajustar-fator-custo'), fv = document.getElementById('ajustar-fator-venda');
+    if (!fc.value && fatoresEstoque[tipo.chave].custo > 0) fc.value = fatoresEstoque[tipo.chave].custo;
+    if (!fv.value && fatoresEstoque[tipo.chave].venda > 0) fv.value = fatoresEstoque[tipo.chave].venda;
+  }
+  var ncmEl = document.getElementById('ajustar-ncm');
+  if (!ncmEl.value.trim()) {
+    var sugerido = ncmAutomatico(nome);
+    if (sugerido) ncmEl.value = sugerido;
+  }
+}
+
+// Custo/Venda = peso × fator (mesma conta do Pedido); campo de fator vazio não mexe no valor.
+function aplicarFatoresModal() {
+  var peso = pesoEmbalagemEstoque(document.getElementById('ajustar-nome').value);
+  var hint = document.getElementById('ajustar-peso-hint');
+  if (peso == null) {
+    hint.textContent = 'Fator vale só pra embalagem (Nylon Poli, MRP, Termoencolhível) com medidas no nome.';
+    return;
+  }
+  hint.textContent = 'Peso da fórmula: ' + peso.toLocaleString('pt-BR', { maximumFractionDigits: 4 }) + ' (larg × comp × esp).';
+  var fc = toNumberEstoque(document.getElementById('ajustar-fator-custo').value);
+  var fv = toNumberEstoque(document.getElementById('ajustar-fator-venda').value);
+  if (fc > 0) document.getElementById('ajustar-custo').value = arredondarPrecoEstoque(peso * fc);
+  if (fv > 0) document.getElementById('ajustar-preco').value = arredondarPrecoEstoque(peso * fv);
   atualizarMargemPreviewAjuste();
+}
+
+async function mostrarValidacaoNcmModal() {
+  var hint = document.getElementById('ajustar-ncm-hint');
+  var valor = document.getElementById('ajustar-ncm').value;
+  if (!valor.trim()) { hint.style.color = ''; hint.textContent = 'Preenchido sozinho pelo tipo do produto.'; return; }
+  try {
+    var r = await validarNcm(valor);
+    hint.style.color = r.ok ? '#1a7a3c' : '#a92323';
+    hint.textContent = r.ok ? '✔ ' + r.descricao : '✖ Esse NCM não existe na tabela oficial — confira o código.';
+  } catch (e) { /* tabela indisponível — a validação final acontece ao salvar */ }
+}
+
+function abrirModalProduto(produto) {
+  produtoEmAjuste = produto || null;
+  var set = function (id, v) { document.getElementById(id).value = v; };
+  document.getElementById('ajustar-titulo').textContent = produto ? 'Editar produto' : 'Novo produto';
+
+  if (produto) {
+    set('ajustar-nome', produto.nome_produto || '');
+    set('ajustar-codigo', produto.codigo_produto || '');
+    set('ajustar-ncm', produto.ncm || '');
+    set('ajustar-fator-custo', produto.fator_custo != null ? produto.fator_custo : '');
+    set('ajustar-fator-venda', produto.fator_venda != null ? produto.fator_venda : '');
+    set('ajustar-custo', produto.preco_custo != null ? produto.preco_custo : '');
+    set('ajustar-preco', produto.preco_unitario != null ? produto.preco_unitario : '');
+    set('ajustar-quantidade', produto.quantidade_estoque || 0);
+  } else {
+    ['ajustar-nome', 'ajustar-ncm', 'ajustar-fator-custo', 'ajustar-fator-venda', 'ajustar-custo', 'ajustar-preco'].forEach(function (id) { set(id, ''); });
+    set('ajustar-codigo', proximoCodigoSequencialEstoque(allProdutosEstoque));
+    set('ajustar-quantidade', 0);
+  }
+
+  preencherPadroesDoTipoModal();
+  // Ao abrir, só calcula o que ainda está vazio — nunca sobrescreve um valor já gravado.
+  var custoAntes = document.getElementById('ajustar-custo').value, precoAntes = document.getElementById('ajustar-preco').value;
+  aplicarFatoresModal();
+  if (custoAntes) document.getElementById('ajustar-custo').value = custoAntes;
+  if (precoAntes) document.getElementById('ajustar-preco').value = precoAntes;
+
+  atualizarMargemPreviewAjuste();
+  mostrarValidacaoNcmModal();
   document.getElementById('ajustar-error').style.display = 'none';
   document.getElementById('modal-ajustar-estoque').classList.add('open');
 }
 
+function abrirModalAjustar(produto) { abrirModalProduto(produto); }
+
 document.getElementById('ajustar-custo').addEventListener('input', atualizarMargemPreviewAjuste);
 document.getElementById('ajustar-preco').addEventListener('input', atualizarMargemPreviewAjuste);
+document.getElementById('ajustar-fator-custo').addEventListener('input', aplicarFatoresModal);
+document.getElementById('ajustar-fator-venda').addEventListener('input', aplicarFatoresModal);
+document.getElementById('ajustar-ncm').addEventListener('input', mostrarValidacaoNcmModal);
+document.getElementById('ajustar-nome').addEventListener('input', function () {
+  preencherPadroesDoTipoModal();
+  aplicarFatoresModal();
+  mostrarValidacaoNcmModal();
+});
+
+var btnNovoProduto = document.getElementById('btn-novo-produto');
+if (btnNovoProduto) btnNovoProduto.addEventListener('click', function () { abrirModalProduto(null); });
 
 function fecharModalAjustar() {
   document.getElementById('modal-ajustar-estoque').classList.remove('open');
@@ -223,75 +310,154 @@ if (ajustarCancelarBtn) ajustarCancelarBtn.addEventListener('click', fecharModal
 
 var ajustarConfirmarBtn = document.getElementById('ajustar-confirmar');
 if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async function () {
-  if (!produtoEmAjuste) return;
   var errorEl = document.getElementById('ajustar-error');
+  var btn = this;
   errorEl.style.display = 'none';
+  var falhar = function (msg) { errorEl.textContent = msg; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Salvar'; };
 
-  var novoNome = document.getElementById('ajustar-nome').value.trim();
-  if (!novoNome) {
-    errorEl.textContent = 'A descrição não pode ficar vazia.';
-    errorEl.style.display = 'block';
-    return;
-  }
+  var nome = document.getElementById('ajustar-nome').value.trim();
+  if (!nome) return falhar('A descrição não pode ficar vazia.');
 
-  var novaQuantidade = toNumberEstoque(document.getElementById('ajustar-quantidade').value);
-  if (novaQuantidade < 0) {
-    errorEl.textContent = 'A quantidade não pode ser negativa.';
-    errorEl.style.display = 'block';
-    return;
-  }
+  var quantidade = toNumberEstoque(document.getElementById('ajustar-quantidade').value);
+  if (quantidade < 0) return falhar('A quantidade não pode ser negativa.');
 
   var custoStr = document.getElementById('ajustar-custo').value.trim();
   var precoStr = document.getElementById('ajustar-preco').value.trim();
-  var novoCusto = custoStr ? toNumberEstoque(custoStr) : null;
-  var novoPreco = precoStr ? toNumberEstoque(precoStr) : null;
+  var custo = custoStr ? toNumberEstoque(custoStr) : null;
+  var preco = precoStr ? toNumberEstoque(precoStr) : null;
+  if (custo != null && custo < 0) return falhar('O custo não pode ser negativo.');
+  if (preco != null && preco < 0) return falhar('O preço de venda não pode ser negativo.');
 
-  if (novoCusto != null && novoCusto < 0) {
-    errorEl.textContent = 'O custo não pode ser negativo.';
-    errorEl.style.display = 'block';
-    return;
-  }
-  if (novoPreco != null && novoPreco < 0) {
-    errorEl.textContent = 'O preço de venda não pode ser negativo.';
-    errorEl.style.display = 'block';
-    return;
+  var fcStr = document.getElementById('ajustar-fator-custo').value.trim();
+  var fvStr = document.getElementById('ajustar-fator-venda').value.trim();
+
+  var codigo = document.getElementById('ajustar-codigo').value.trim();
+  if (codigo) {
+    var idAtual = produtoEmAjuste ? produtoEmAjuste.id : null;
+    var repetido = allProdutosEstoque.find(function (p) { return p.id !== idAtual && (p.codigo_produto || '').trim() === codigo; });
+    if (repetido) return falhar('O código ' + codigo + ' já é do produto "' + repetido.nome_produto + '". Use outro ou deixe o sugerido.');
   }
 
-  var btn = this;
   btn.disabled = true;
   btn.textContent = 'Salvando...';
 
-  var novoNcm = document.getElementById('ajustar-ncm').value.trim() || null;
-  if (novoNcm) {
+  var ncm = document.getElementById('ajustar-ncm').value.trim() || null;
+  if (ncm) {
     var valNcm = null;
-    try { valNcm = await validarNcm(novoNcm); } catch (e) { valNcm = null; }
-    if (valNcm && !valNcm.ok) {
-      errorEl.textContent = 'Esse NCM não existe na tabela oficial — confira o código (8 dígitos).';
-      errorEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'Salvar';
-      return;
-    }
-    if (valNcm) novoNcm = valNcm.formatado;
+    try { valNcm = await validarNcm(ncm); } catch (e) { valNcm = null; }
+    if (valNcm && !valNcm.ok) return falhar('Esse NCM não existe na tabela oficial — confira o código (8 dígitos).');
+    if (valNcm) ncm = valNcm.formatado;
   }
 
-  var { error } = await supabaseClient
-    .from('produtos_catalogo')
-    .update({ nome_produto: novoNome, ncm: novoNcm, quantidade_estoque: novaQuantidade, preco_custo: novoCusto, preco_unitario: novoPreco })
-    .eq('id', produtoEmAjuste.id);
+  var valores = {
+    nome_produto: nome, codigo_produto: codigo || null, ncm: ncm,
+    fator_custo: fcStr ? toNumberEstoque(fcStr) : null, fator_venda: fvStr ? toNumberEstoque(fvStr) : null,
+    preco_custo: custo, preco_unitario: preco, quantidade_estoque: quantidade
+  };
+
+  var resultado;
+  if (produtoEmAjuste) {
+    resultado = await supabaseClient.from('produtos_catalogo').update(valores).eq('id', produtoEmAjuste.id);
+  } else {
+    valores.created_by = currentUserIdEstoque;
+    resultado = await supabaseClient.from('produtos_catalogo').insert(valores);
+  }
 
   btn.disabled = false;
   btn.textContent = 'Salvar';
+  if (resultado.error) return falhar('Erro ao salvar: ' + resultado.error.message);
 
-  if (error) {
-    errorEl.textContent = 'Erro ao salvar: ' + error.message;
-    errorEl.style.display = 'block';
-    return;
-  }
-
-  showToast('Estoque atualizado.', 'ok');
+  showToast(produtoEmAjuste ? 'Produto atualizado.' : 'Produto cadastrado.', 'ok');
   fecharModalAjustar();
   loadProdutosEstoque();
+});
+
+/* ===================== EXPORTAR / IMPORTAR EXCEL (admin) ===================== */
+
+var PRODUTO_COLUNAS_EXCEL = ['nome_produto', 'codigo_produto', 'ncm', 'preco_custo', 'preco_unitario'];
+
+var btnExportarProdutos = document.getElementById('btn-exportar-produtos');
+if (btnExportarProdutos) btnExportarProdutos.addEventListener('click', function () {
+  var linhas = allProdutosEstoque.map(function (p) {
+    return {
+      nome_produto: p.nome_produto || '', codigo_produto: p.codigo_produto || '', ncm: p.ncm || '',
+      preco_custo: p.preco_custo != null ? p.preco_custo : '', preco_unitario: p.preco_unitario != null ? p.preco_unitario : ''
+    };
+  });
+  baixarExcel('produtos.xlsx', linhas, PRODUTO_COLUNAS_EXCEL);
+});
+
+var btnImportarProdutos = document.getElementById('btn-importar-produtos');
+if (btnImportarProdutos) btnImportarProdutos.addEventListener('click', function () {
+  document.getElementById('input-importar-produtos').click();
+});
+
+var inputImportarProdutos = document.getElementById('input-importar-produtos');
+if (inputImportarProdutos) inputImportarProdutos.addEventListener('change', async function (e) {
+  var file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+
+  var statusEl = document.getElementById('importar-produtos-status');
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Lendo arquivo...';
+
+  var linhas;
+  try { linhas = await lerArquivoExcel(file); }
+  catch (err) { statusEl.textContent = 'Erro ao ler o arquivo: ' + err.message; return; }
+
+  var criados = 0, atualizados = 0, semNome = 0, comErro = 0, ncmInvalidos = 0;
+  // Cópia local que também recebe o que for criado/atualizado neste import, pra linhas
+  // repetidas do arquivo se reconhecerem entre si (e o próximo código não repetir).
+  var conhecidos = allProdutosEstoque.slice();
+
+  for (var i = 0; i < linhas.length; i++) {
+    var linha = linhas[i];
+    var nome = campoExcel(linha, ['nome_produto', 'Nome do Produto', 'Nome']);
+    if (!nome) { semNome++; continue; }
+
+    var codigo = campoExcel(linha, ['codigo_produto', 'Código do Produto', 'Código']);
+    var ncm = campoExcel(linha, ['ncm', 'NCM']);
+    var custoTexto = campoExcel(linha, ['preco_custo', 'Preço de Custo', 'Custo']);
+    var precoTexto = campoExcel(linha, ['preco_unitario', 'Preço Unitário', 'Preço', 'Preço de Venda']);
+
+    if (ncm) {
+      var v = null;
+      try { v = await validarNcm(ncm); } catch (err) { v = null; }
+      if (v && !v.ok) { ncmInvalidos++; ncm = ''; } else if (v) { ncm = v.formatado; }
+    }
+
+    var existente = conhecidos.find(function (p) { return (p.nome_produto || '').trim().toLowerCase() === nome.toLowerCase(); });
+    var values = {
+      nome_produto: nome,
+      codigo_produto: codigo || (existente ? existente.codigo_produto : proximoCodigoSequencialEstoque(conhecidos)),
+      ncm: ncm || (existente && existente.ncm) || ncmAutomatico(nome),
+      preco_custo: custoTexto ? toNumberEstoque(custoTexto) : (existente ? existente.preco_custo : null),
+      preco_unitario: precoTexto ? toNumberEstoque(precoTexto) : (existente ? existente.preco_unitario : null)
+    };
+
+    var resultado;
+    if (existente) {
+      resultado = await supabaseClient.from('produtos_catalogo').update(values).eq('id', existente.id).select().single();
+    } else {
+      values.created_by = currentUserIdEstoque;
+      resultado = await supabaseClient.from('produtos_catalogo').insert(values).select().single();
+    }
+
+    if (resultado.error) { comErro++; continue; }
+    if (existente) { atualizados++; Object.assign(existente, resultado.data); }
+    else { criados++; conhecidos.push(resultado.data); }
+  }
+
+  var partes = [];
+  if (criados) partes.push(criados + ' criado(s)');
+  if (atualizados) partes.push(atualizados + ' atualizado(s) por nome já existente');
+  if (semNome) partes.push(semNome + ' linha(s) ignorada(s) por falta de nome');
+  if (ncmInvalidos) partes.push(ncmInvalidos + ' NCM inexistente(s) ignorado(s)');
+  if (comErro) partes.push(comErro + ' com erro');
+  statusEl.textContent = 'Importação concluída: ' + (partes.join(', ') || 'nenhuma linha processada') + '.';
+  showToast('Importação de produtos concluída.', comErro ? 'warning' : 'ok');
+  await loadProdutosEstoque();
 });
 
 /* ===================== FATORES DAS EMBALAGENS (admin) ===================== */
