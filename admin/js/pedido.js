@@ -751,8 +751,8 @@ function atualizarValorVista() {
   document.getElementById('valor_total_a_pagar_vista').value = (valorCheio * (1 - desconto / 100)).toFixed(2);
 }
 
-// Fornecedor com imposto no cadastro (ex: Thermoprint — ICMS 18% já incluso no preço, IPI 3,25%
-// acrescentado nos itens de 30 m): o IPI entra no total do pedido.
+// Fornecedor com imposto no cadastro (ex: Thermoprint — ICMS 18% e IPI 3,25%): o custo do produto já
+// vem com o IPI incluso, então o total NÃO soma imposto de novo — IPI e ICMS aparecem só descritos.
 function regraImpostoFornecedor() {
   if (!selectedCliente || !selectedCliente.eh_fornecedor) return null;
   var ipi = parseFloat(selectedCliente.ipi_percentual) || 0;
@@ -764,13 +764,27 @@ function marcaDoFornecedor() {
   return ehPedidoParaFornecedor() ? (selectedCliente.marca_produto || '').trim() : '';
 }
 
+// Total (já com IPI) dos itens que pertencem à regra de imposto do fornecedor.
+function totalItensComImposto() {
+  return geraisItems.reduce(function (acc, g) {
+    return itemSujeitoIpiFornecedor(g.nome_produto, marcaDoFornecedor()) ? acc + g.preco_unitario * g.quantidade : acc;
+  }, 0);
+}
+
+// IPI que está dentro do valor dos itens: total - total/(1+IPI%).
 function calcularIpiPedido() {
   var regra = regraImpostoFornecedor();
   if (!regra || !(regra.ipi > 0)) return 0;
-  var base = geraisItems.reduce(function (acc, g) {
-    return itemSujeitoIpiFornecedor(g.nome_produto, marcaDoFornecedor()) ? acc + g.preco_unitario * g.quantidade : acc;
-  }, 0);
-  return Math.round(base * regra.ipi) / 100;
+  var total = totalItensComImposto();
+  return Math.round((total - total / (1 + regra.ipi / 100)) * 100) / 100;
+}
+
+// ICMS incluso no preço (valor de referência): ICMS% sobre o valor dos itens sem o IPI.
+function calcularIcmsReferenciaPedido() {
+  var regra = regraImpostoFornecedor();
+  if (!regra || !(regra.icms > 0)) return 0;
+  var base = totalItensComImposto() - calcularIpiPedido();
+  return Math.round(base * regra.icms) / 100;
 }
 
 function formatarPercentualPedido(n) {
@@ -779,10 +793,10 @@ function formatarPercentualPedido(n) {
 
 // Campos ICMS/IPI do pedido se preenchem sozinhos pela regra — sem sobrescrever texto digitado à mão.
 var textoIcmsAuto = '', textoIpiAuto = '';
-function atualizarCamposImposto(regra, ipiValor) {
+function atualizarCamposImposto(regra, ipiValor, icmsValor) {
   var icmsEl = document.getElementById('icms'), ipiEl = document.getElementById('ipi');
-  var novoIcms = regra && regra.icms > 0 ? formatarPercentualPedido(regra.icms) + ' incluso no preço' : '';
-  var novoIpi = regra && regra.ipi > 0 ? formatarPercentualPedido(regra.ipi) + ' a acrescentar (' + formatBRL(ipiValor) + ')' : '';
+  var novoIcms = regra && regra.icms > 0 ? formatarPercentualPedido(regra.icms) + ' incluso no preço (' + formatBRL(icmsValor) + ')' : '';
+  var novoIpi = regra && regra.ipi > 0 ? formatarPercentualPedido(regra.ipi) + ' incluso no valor (' + formatBRL(ipiValor) + ')' : '';
   if (!icmsEl.value || icmsEl.value === textoIcmsAuto) { icmsEl.value = novoIcms; }
   if (!ipiEl.value || ipiEl.value === textoIpiAuto) { ipiEl.value = novoIpi; }
   textoIcmsAuto = novoIcms;
@@ -810,13 +824,17 @@ function updateTotals() {
 
   var regraImposto = regraImpostoFornecedor();
   var ipiValor = calcularIpiPedido();
+  var icmsValor = calcularIcmsReferenciaPedido();
   document.getElementById('total-ipi-box').style.display = (regraImposto && regraImposto.ipi > 0) ? '' : 'none';
-  document.getElementById('total-ipi-label').textContent = regraImposto && regraImposto.ipi > 0 ? 'IPI ' + formatarPercentualPedido(regraImposto.ipi) + ' (somado ao total)' : 'IPI';
+  document.getElementById('total-ipi-label').textContent = regraImposto && regraImposto.ipi > 0 ? 'IPI ' + formatarPercentualPedido(regraImposto.ipi) + ' (já incluso nos valores)' : 'IPI';
   document.getElementById('total-ipi').textContent = formatBRL(ipiValor);
-  atualizarCamposImposto(regraImposto, ipiValor);
+  document.getElementById('total-icms-box').style.display = (regraImposto && regraImposto.icms > 0) ? '' : 'none';
+  document.getElementById('total-icms-label').textContent = regraImposto && regraImposto.icms > 0 ? 'ICMS ' + formatarPercentualPedido(regraImposto.icms) + ' (incluso, referência)' : 'ICMS';
+  document.getElementById('total-icms').textContent = formatBRL(icmsValor);
+  atualizarCamposImposto(regraImposto, ipiValor, icmsValor);
 
   if (!valorTotalManuallyEdited) {
-    document.getElementById('valor_total_a_pagar').value = (valorItens + ipiValor).toFixed(2);
+    document.getElementById('valor_total_a_pagar').value = valorItens.toFixed(2);
   }
   atualizarValorVista();
 }
@@ -1168,6 +1186,7 @@ function buildViaFornecedorEtiquetaHtml(label) {
 
   var subtotal = geraisItems.reduce(function (acc, g) { return acc + g.preco_unitario * g.quantidade; }, 0);
   var ipiValor = calcularIpiPedido();
+  var icmsValor = calcularIcmsReferenciaPedido();
   var totalPedido = toNumber(valorCampo('valor_total_a_pagar'));
 
   var linhas = geraisItems.map(function (g) {
@@ -1184,14 +1203,16 @@ function buildViaFornecedorEtiquetaHtml(label) {
       '<td style="width:150px; text-align:right; border:none;' + (forte ? ' font-weight:700;' : '') + '">' + valor + '</td></tr>';
   };
   var totais = '<table style="width:100%; margin-top:6px;"><tbody>' +
-    linhaTotal('Subtotal dos itens', formatBRL(subtotal)) +
-    (regra && regra.ipi > 0 ? linhaTotal('IPI ' + formatarPercentualPedido(regra.ipi) + ' (incluído no total)', formatBRL(ipiValor)) : '') +
+    (regra && regra.ipi > 0
+      ? linhaTotal('Valor dos produtos (sem IPI)', formatBRL(subtotal - ipiValor)) +
+        linhaTotal('IPI ' + formatarPercentualPedido(regra.ipi) + ' (já incluso nos valores)', formatBRL(ipiValor))
+      : linhaTotal('Subtotal dos itens', formatBRL(subtotal))) +
     linhaTotal('TOTAL DO PEDIDO', formatBRL(totalPedido), true) +
     '</tbody></table>';
 
   var observacoesImposto = [];
-  if (regra && regra.icms > 0) observacoesImposto.push('ICMS de ' + formatarPercentualPedido(regra.icms) + ' já incluso nos valores unitários.');
-  if (regra && regra.ipi > 0) observacoesImposto.push('IPI de ' + formatarPercentualPedido(regra.ipi) + ' (' + formatBRL(ipiValor) + ') incluído no valor total do pedido.');
+  if (regra && regra.icms > 0) observacoesImposto.push('ICMS de ' + formatarPercentualPedido(regra.icms) + ' já incluso nos valores unitários (' + formatBRL(icmsValor) + ', valor de referência).');
+  if (regra && regra.ipi > 0) observacoesImposto.push('IPI de ' + formatarPercentualPedido(regra.ipi) + ' (' + formatBRL(ipiValor) + ') já incluso nos valores unitários.');
 
   var linhaInfo = function (rotulo, valor) { return valor ? '<p><strong>' + rotulo + ':</strong> ' + valor + '</p>' : ''; };
   var transportadora = [valorCampo('transp_empresa'), valorCampo('transp_endereco'), valorCampo('transp_tel')].filter(Boolean).join(' — ');
@@ -1501,7 +1522,7 @@ async function iniciarEdicaoPedido(pedidoId) {
   var somaItensAtual = vacuoItems.reduce(function (acc, item) { return acc + calcVacuo(item).vl_total; }, 0) +
     geraisItems.reduce(function (acc, g) { return acc + g.preco_unitario * g.quantidade; }, 0);
   var valorSalvo = parseFloat(pedido.valor_total_a_pagar) || 0;
-  valorTotalManuallyEdited = Math.abs((somaItensAtual + calcularIpiPedido()) - valorSalvo) > 0.01;
+  valorTotalManuallyEdited = Math.abs(somaItensAtual - valorSalvo) > 0.01;
   document.getElementById('valor_total_a_pagar').value = pedido.valor_total_a_pagar || 0;
 
   document.getElementById('desconto_percentual').value = pedido.desconto_percentual || '';

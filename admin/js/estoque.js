@@ -11,12 +11,28 @@ var TIPOS_FATOR_ESTOQUE = [
   { label: 'Termoencolhível', chave: 'termoencolhivel' }
 ];
 var fatoresEstoque = {};
-var marcasComImposto = []; // marcas de fornecedores com IPI cadastrado (selo na lista)
+var ipiPorMarca = {}; // { THERMO: 3.25 } — fornecedores com IPI cadastrado
 
 async function carregarMarcasComImposto() {
   var { data } = await supabaseClient.from('clientes').select('marca_produto, ipi_percentual').eq('eh_fornecedor', true);
-  marcasComImposto = (data || []).filter(function (c) { return c.marca_produto && parseFloat(c.ipi_percentual) > 0; })
-    .map(function (c) { return c.marca_produto; });
+  ipiPorMarca = {};
+  (data || []).forEach(function (c) {
+    if (c.marca_produto && parseFloat(c.ipi_percentual) > 0) ipiPorMarca[c.marca_produto] = parseFloat(c.ipi_percentual);
+  });
+}
+
+// IPI% do fornecedor dono do produto (pela marca no nome); 0 quando o fornecedor não tem IPI cadastrado.
+function ipiDoProduto(nomeProduto) {
+  var marcas = Object.keys(ipiPorMarca);
+  for (var i = 0; i < marcas.length; i++) {
+    if (itemSujeitoIpiFornecedor(nomeProduto, marcas[i])) return ipiPorMarca[marcas[i]];
+  }
+  return 0;
+}
+
+// Custo de compra já com o IPI do fornecedor incluso (6 casas pra não perder centavo no total).
+function custoComIpi(precoFornecedor, ipiPercentual) {
+  return Math.round(precoFornecedor * (1 + ipiPercentual / 100) * 1000000) / 1000000;
 } // { nylon_poli: { custo: 0, venda: 0 }, ... }
 
 function tipoFatorDoProduto(nomeProduto) {
@@ -121,7 +137,7 @@ function renderEstoqueTable(list) {
       : qtdEstoque.toLocaleString('pt-BR');
 
     return '<tr>' +
-      '<td>' + p.nome_produto + (marcasComImposto.some(function (m) { return itemSujeitoIpiFornecedor(p.nome_produto, m); }) ? ' <span class="badge badge-warning" title="Fornecedor com ICMS incluso no preço + IPI acrescentado no pedido">ICMS incl. + IPI</span>' : '') + '</td>' +
+      '<td>' + p.nome_produto + (ipiDoProduto(p.nome_produto) > 0 ? ' <span class="badge badge-warning" title="Custo já com IPI incluso (preço do fornecedor + IPI); ICMS incluso no preço">custo c/ IPI</span>' : '') + '</td>' +
       '<td>' + codigoCell + '</td>' +
       '<td>' + ncmCell + '</td>' +
       '<td>' + custo + '</td>' +
@@ -258,6 +274,24 @@ async function mostrarValidacaoNcmModal() {
   } catch (e) { /* tabela indisponível — a validação final acontece ao salvar */ }
 }
 
+function atualizarCampoPrecoFornecedor() {
+  var ipi = ipiDoProduto(document.getElementById('ajustar-nome').value);
+  document.getElementById('campo-preco-fornecedor').style.display = ipi > 0 ? '' : 'none';
+  if (ipi > 0) {
+    document.getElementById('ajustar-preco-fornecedor-hint').textContent = 'Custo = preço do fornecedor × (1 + IPI ' + String(ipi).replace('.', ',') + '%), calculado sozinho.';
+  }
+  return ipi;
+}
+
+function aplicarPrecoFornecedorModal() {
+  var ipi = atualizarCampoPrecoFornecedor();
+  var valor = document.getElementById('ajustar-preco-fornecedor').value.trim();
+  if (ipi > 0 && valor) {
+    document.getElementById('ajustar-custo').value = custoComIpi(toNumberEstoque(valor), ipi);
+    atualizarMargemPreviewAjuste();
+  }
+}
+
 function abrirModalProduto(produto) {
   produtoEmAjuste = produto || null;
   var set = function (id, v) { document.getElementById(id).value = v; };
@@ -269,11 +303,12 @@ function abrirModalProduto(produto) {
     set('ajustar-ncm', produto.ncm || '');
     set('ajustar-fator-custo', produto.fator_custo != null ? produto.fator_custo : '');
     set('ajustar-fator-venda', produto.fator_venda != null ? produto.fator_venda : '');
+    set('ajustar-preco-fornecedor', produto.preco_fornecedor != null ? produto.preco_fornecedor : '');
     set('ajustar-custo', produto.preco_custo != null ? produto.preco_custo : '');
     set('ajustar-preco', produto.preco_unitario != null ? produto.preco_unitario : '');
     set('ajustar-quantidade', produto.quantidade_estoque || 0);
   } else {
-    ['ajustar-nome', 'ajustar-ncm', 'ajustar-fator-custo', 'ajustar-fator-venda', 'ajustar-custo', 'ajustar-preco'].forEach(function (id) { set(id, ''); });
+    ['ajustar-nome', 'ajustar-ncm', 'ajustar-fator-custo', 'ajustar-fator-venda', 'ajustar-preco-fornecedor', 'ajustar-custo', 'ajustar-preco'].forEach(function (id) { set(id, ''); });
     set('ajustar-codigo', proximoCodigoSequencialEstoque(allProdutosEstoque));
     set('ajustar-quantidade', 0);
   }
@@ -285,6 +320,7 @@ function abrirModalProduto(produto) {
   if (custoAntes) document.getElementById('ajustar-custo').value = custoAntes;
   if (precoAntes) document.getElementById('ajustar-preco').value = precoAntes;
 
+  atualizarCampoPrecoFornecedor();
   atualizarMargemPreviewAjuste();
   mostrarValidacaoNcmModal();
   document.getElementById('ajustar-error').style.display = 'none';
@@ -298,9 +334,11 @@ document.getElementById('ajustar-preco').addEventListener('input', atualizarMarg
 document.getElementById('ajustar-fator-custo').addEventListener('input', aplicarFatoresModal);
 document.getElementById('ajustar-fator-venda').addEventListener('input', aplicarFatoresModal);
 document.getElementById('ajustar-ncm').addEventListener('input', mostrarValidacaoNcmModal);
+document.getElementById('ajustar-preco-fornecedor').addEventListener('input', aplicarPrecoFornecedorModal);
 document.getElementById('ajustar-nome').addEventListener('input', function () {
   preencherPadroesDoTipoModal();
   aplicarFatoresModal();
+  atualizarCampoPrecoFornecedor();
   mostrarValidacaoNcmModal();
 });
 
@@ -335,6 +373,7 @@ if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async fun
   if (custo != null && custo < 0) return falhar('O custo não pode ser negativo.');
   if (preco != null && preco < 0) return falhar('O preço de venda não pode ser negativo.');
 
+  var pfStr = atualizarCampoPrecoFornecedor() > 0 ? document.getElementById('ajustar-preco-fornecedor').value.trim() : '';
   var fcStr = document.getElementById('ajustar-fator-custo').value.trim();
   var fvStr = document.getElementById('ajustar-fator-venda').value.trim();
 
@@ -359,6 +398,7 @@ if (ajustarConfirmarBtn) ajustarConfirmarBtn.addEventListener('click', async fun
   var valores = {
     nome_produto: nome, codigo_produto: codigo || null, ncm: ncm,
     fator_custo: fcStr ? toNumberEstoque(fcStr) : null, fator_venda: fvStr ? toNumberEstoque(fvStr) : null,
+    preco_fornecedor: pfStr ? toNumberEstoque(pfStr) : null,
     preco_custo: custo, preco_unitario: preco, quantidade_estoque: quantidade
   };
 
@@ -1128,9 +1168,11 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
 
       if (existenteProduto) {
         var novaQuantidade = (existenteProduto.quantidade_estoque || 0) + item.quantidade;
+        var ipiExistente = ipiDoProduto(existenteProduto.nome_produto);
         await supabaseClient.from('produtos_catalogo').update({
           quantidade_estoque: novaQuantidade,
-          preco_custo: item.valor_unitario || existenteProduto.preco_custo,
+          preco_fornecedor: ipiExistente > 0 && item.valor_unitario ? item.valor_unitario : existenteProduto.preco_fornecedor,
+          preco_custo: item.valor_unitario ? (ipiExistente > 0 ? custoComIpi(item.valor_unitario, ipiExistente) : item.valor_unitario) : existenteProduto.preco_custo,
           // Só preenche Venda Unit. automático se ainda não tinha um (nunca sobrescreve
           // um preço que o admin já ajustou manualmente).
           preco_unitario: existenteProduto.preco_unitario != null ? existenteProduto.preco_unitario : calcularPrecoVendaEmbalagemEstoque(existenteProduto.nome_produto)
@@ -1142,7 +1184,9 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
         // a IA não deve inventar um NCM que não está escrito no documento).
         var { data: novoProduto } = await supabaseClient.from('produtos_catalogo').insert({
           nome_produto: aplicarMarcaNoNome(item.descricao, marcaDoForn), codigo_produto: proximoCodigoSequencialEstoque(produtosAtuais),
-          quantidade_estoque: item.quantidade, preco_custo: item.valor_unitario || null,
+          quantidade_estoque: item.quantidade,
+          preco_fornecedor: ipiDoProduto(aplicarMarcaNoNome(item.descricao, marcaDoForn)) > 0 ? (item.valor_unitario || null) : null,
+          preco_custo: item.valor_unitario ? (ipiDoProduto(aplicarMarcaNoNome(item.descricao, marcaDoForn)) > 0 ? custoComIpi(item.valor_unitario, ipiDoProduto(aplicarMarcaNoNome(item.descricao, marcaDoForn))) : item.valor_unitario) : null,
           ncm: ncmAutomatico(item.descricao),
           preco_unitario: calcularPrecoVendaEmbalagemEstoque(item.descricao),
           created_by: currentUserIdEstoque
