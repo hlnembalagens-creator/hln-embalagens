@@ -26,9 +26,23 @@ function medidasEtiqueta(nomeProduto) {
   return { largura: parseInt(larg[1], 10), metragem: metr ? parseInt(metr[1], 10) : null };
 }
 
+// Alguns fornecedores embalam diferente da regra geral — identificados pela marca no nome do
+// produto. Thermoprint: caixa de 60 mm de 30 m tem 32 rolos (40 mm de 30 m = 48, igual à regra geral).
+var ROLOS_POR_CAIXA_POR_MARCA = {
+  THERMO: { 60: { 30: 32 } }
+};
+
 function rolosPorCaixaDoProduto(nomeProduto) {
   var medidas = medidasEtiqueta(nomeProduto);
-  return medidas ? rolosPorCaixaEtiqueta(medidas.largura, medidas.metragem) : null;
+  if (!medidas) return null;
+  var nome = String(nomeProduto || '').toUpperCase();
+  var marcas = Object.keys(ROLOS_POR_CAIXA_POR_MARCA);
+  for (var i = 0; i < marcas.length; i++) {
+    if (nome.indexOf(marcas[i]) === -1) continue;
+    var porLargura = ROLOS_POR_CAIXA_POR_MARCA[marcas[i]][medidas.largura];
+    if (porLargura && porLargura[medidas.metragem]) return porLargura[medidas.metragem];
+  }
+  return rolosPorCaixaEtiqueta(medidas.largura, medidas.metragem);
 }
 
 // Cada fornecedor tem uma "marca" cadastrada (ex: THERMO, ALTISVAC) que a gente coloca no fim do nome
