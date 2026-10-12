@@ -31,14 +31,28 @@ function rolosPorCaixaDoProduto(nomeProduto) {
   return medidas ? rolosPorCaixaEtiqueta(medidas.largura, medidas.metragem) : null;
 }
 
-// Itens do fornecedor Thermoprint — identificados pelo "THERMO" no nome do produto (ex:
-// "Etiqueta 60X40 - 30M - THERMO"): preço já com ICMS incluso e IPI acrescentado ao total.
-// Produtos de 30 m de outros fornecedores (sem THERMO no nome) ficam fora da regra.
-function itemSujeitoIpiFornecedor(nomeProduto) {
-  return /THERMO/i.test(String(nomeProduto || ''));
+// Cada fornecedor tem uma "marca" cadastrada (ex: THERMO, ALTISVAC) que a gente coloca no fim do nome
+// dos produtos dele (ex: "Etiqueta 60X40 - 30M - THERMO"). A marca identifica de quem é o produto,
+// define quais itens levam o IPI/ICMS do fornecedor e NÃO aparece nos documentos enviados a ele.
+function itemSujeitoIpiFornecedor(nomeProduto, marca) {
+  var m = String(marca || '').trim();
+  if (!m) return true; // fornecedor sem marca: a regra vale pra todos os itens dele
+  return String(nomeProduto || '').toUpperCase().indexOf(m.toUpperCase()) !== -1;
 }
 
-// Nome como o fornecedor conhece (sem a marca THERMO que usamos só pra identificar).
-function nomeParaFornecedor(nomeProduto) {
-  return String(nomeProduto || '').replace(/\s*-?\s*THERMO\b/i, '').trim();
+// Nome como o fornecedor conhece (sem a marca que usamos só pra identificar).
+function nomeParaFornecedor(nomeProduto, marca) {
+  var nome = String(nomeProduto || '').trim();
+  var m = String(marca || '').trim();
+  if (!m) return nome;
+  var escapada = m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return nome.replace(new RegExp('\\s*-?\\s*' + escapada + '\\b', 'i'), '').trim();
+}
+
+// Produto novo vindo de um fornecedor com marca já nasce identificado: "<descrição> - MARCA".
+function aplicarMarcaNoNome(nomeProduto, marca) {
+  var nome = String(nomeProduto || '').trim();
+  var m = String(marca || '').trim();
+  if (!m || nome.toUpperCase().indexOf(m.toUpperCase()) !== -1) return nome;
+  return nome + ' - ' + m;
 }

@@ -29,6 +29,8 @@ function setFormValues(cliente) {
   if (tipoCadastroEl) tipoCadastroEl.value = (cliente && cliente.eh_fornecedor) ? 'fornecedor' : 'cliente';
   var tipoFornecedorEl = document.getElementById('tipo_fornecedor');
   if (tipoFornecedorEl) tipoFornecedorEl.value = (cliente && cliente.tipo_fornecedor) || '';
+  var marcaEl = document.getElementById('marca_produto');
+  if (marcaEl) marcaEl.value = (cliente && cliente.marca_produto) || '';
   var icmsEl = document.getElementById('icms_incluso_percentual'), ipiEl = document.getElementById('ipi_percentual');
   if (icmsEl) icmsEl.value = cliente && cliente.icms_incluso_percentual != null ? String(cliente.icms_incluso_percentual).replace('.', ',') : '';
   if (ipiEl) ipiEl.value = cliente && cliente.ipi_percentual != null ? String(cliente.ipi_percentual).replace('.', ',') : '';
@@ -44,7 +46,7 @@ function atualizarCampoTipoFornecedor() {
   if (!tipoCadastro || !campo) return;
   var visivel = tipoCadastro.value === 'fornecedor' ? '' : 'none';
   campo.style.display = visivel;
-  ['campo-icms-fornecedor', 'campo-ipi-fornecedor'].forEach(function (id) {
+  ['campo-icms-fornecedor', 'campo-ipi-fornecedor', 'campo-marca-fornecedor'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el) el.style.display = visivel;
   });
@@ -69,7 +71,7 @@ function resetForm() {
   if (tipoCadastroElReset) tipoCadastroElReset.value = 'cliente';
   var tipoFornecedorElReset = document.getElementById('tipo_fornecedor');
   if (tipoFornecedorElReset) tipoFornecedorElReset.value = '';
-  ['icms_incluso_percentual', 'ipi_percentual'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
+  ['icms_incluso_percentual', 'ipi_percentual', 'marca_produto'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
   atualizarCampoTipoFornecedor();
   document.getElementById('form-title').textContent = 'Novo cliente';
   document.getElementById('cliente-error').style.display = 'none';
@@ -501,6 +503,11 @@ document.getElementById('cliente-form').addEventListener('submit', async functio
     values.tipo_fornecedor = clienteOriginalSubmit ? (clienteOriginalSubmit.tipo_fornecedor || null) : null;
   }
 
+  if (document.getElementById('marca_produto')) {
+    values.marca_produto = values.eh_fornecedor ? (document.getElementById('marca_produto').value.trim() || null) : null;
+  } else if (clienteOriginalSubmit) {
+    values.marca_produto = clienteOriginalSubmit.marca_produto || null;
+  }
   if (document.getElementById('ipi_percentual')) {
     values.ipi_percentual = values.eh_fornecedor ? numeroDoCampo('ipi_percentual') : null;
     values.icms_incluso_percentual = values.eh_fornecedor ? numeroDoCampo('icms_incluso_percentual') : null;

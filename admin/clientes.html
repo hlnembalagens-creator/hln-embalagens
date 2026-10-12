@@ -73,7 +73,12 @@
         <div class="form-field" data-role-admin id="campo-ipi-fornecedor" style="display:none;">
           <label for="ipi_percentual">IPI a acrescentar (%)</label>
           <input type="text" inputmode="decimal" id="ipi_percentual" placeholder="Ex: 3,25">
-          <span class="hint">Soma ao total do pedido, só nos produtos com THERMO no nome.</span>
+          <span class="hint">Soma ao total do pedido, só nos produtos que tiverem a marca do fornecedor no nome.</span>
+        </div>
+        <div class="form-field" data-role-admin id="campo-marca-fornecedor" style="display:none;">
+          <label for="marca_produto">Marca nos produtos (ex: THERMO)</label>
+          <input type="text" id="marca_produto" placeholder="Ex: ALTISVAC">
+          <span class="hint">Vai no fim do nome dos produtos desse fornecedor, identifica a regra de imposto e some nos documentos enviados a ele.</span>
         </div>
         <div class="form-field span-full" data-role-admin id="campo-tipo-fornecedor" style="display:none;">
           <label for="tipo_fornecedor">Tipo de fornecedor</label>

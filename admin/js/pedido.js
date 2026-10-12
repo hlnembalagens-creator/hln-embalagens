@@ -446,9 +446,13 @@ function formatarCaixasPedido(rolos, rolosPorCaixa) {
 }
 
 // Texto da quantidade no documento do fornecedor de etiqueta: só caixas.
+function ehItemEmRolos(nomeProduto) {
+  return /ETIQUETA|ETQ|BOBINA/i.test(String(nomeProduto || ''));
+}
+
 function textoQuantidadeFornecedor(g) {
   var rolosPorCaixa = rolosPorCaixaDoProduto(g.nome_produto);
-  if (!rolosPorCaixa) return g.quantidade + ' rolos';
+  if (!rolosPorCaixa) return g.quantidade + (ehItemEmRolos(g.nome_produto) ? ' rolos' : ' un.');
   var caixas = Math.round((g.quantidade / rolosPorCaixa) * 100) / 100;
   return String(caixas).replace('.', ',') + (caixas === 1 ? ' caixa' : ' caixas');
 }
@@ -756,11 +760,15 @@ function regraImpostoFornecedor() {
   return (ipi > 0 || icms > 0) ? { ipi: ipi, icms: icms } : null;
 }
 
+function marcaDoFornecedor() {
+  return ehPedidoParaFornecedor() ? (selectedCliente.marca_produto || '').trim() : '';
+}
+
 function calcularIpiPedido() {
   var regra = regraImpostoFornecedor();
   if (!regra || !(regra.ipi > 0)) return 0;
   var base = geraisItems.reduce(function (acc, g) {
-    return itemSujeitoIpiFornecedor(g.nome_produto) ? acc + g.preco_unitario * g.quantidade : acc;
+    return itemSujeitoIpiFornecedor(g.nome_produto, marcaDoFornecedor()) ? acc + g.preco_unitario * g.quantidade : acc;
   }, 0);
   return Math.round(base * regra.ipi) / 100;
 }
@@ -1155,8 +1163,8 @@ function buildViaFornecedorEtiquetaHtml(label) {
 
   var linhas = geraisItems.map(function (g) {
     var rolosPorCaixa = rolosPorCaixaDoProduto(g.nome_produto);
-    var valorUnidade = rolosPorCaixa ? formatBRL(g.preco_unitario * rolosPorCaixa) + ' / caixa' : formatBRL(g.preco_unitario) + ' / rolo';
-    return '<tr><td>' + nomeParaFornecedor(g.nome_produto) + '</td>' +
+    var valorUnidade = rolosPorCaixa ? formatBRL(g.preco_unitario * rolosPorCaixa) + ' / caixa' : formatBRL(g.preco_unitario) + (ehItemEmRolos(g.nome_produto) ? ' / rolo' : ' / un.');
+    return '<tr><td>' + nomeParaFornecedor(g.nome_produto, marcaDoFornecedor()) + '</td>' +
       '<td>' + textoQuantidadeFornecedor(g) + '</td>' +
       '<td>' + valorUnidade + '</td>' +
       '<td>' + formatBRL(g.preco_unitario * g.quantidade) + '</td></tr>';
@@ -1197,7 +1205,7 @@ function buildViaFornecedorEtiquetaHtml(label) {
 }
 
 function buildViaHtml(label) {
-  if (modoFornecedorEtiqueta()) return buildViaFornecedorEtiquetaHtml(label);
+  if (ehPedidoParaFornecedor() && geraisItems.length && !vacuoItems.length) return buildViaFornecedorEtiquetaHtml(label);
   var dataStr = new Date().toLocaleDateString('pt-BR');
   var cliente = selectedCliente || {};
   var enderecoCompleto = [
@@ -1220,7 +1228,7 @@ function buildViaHtml(label) {
       }).join('')
     : geraisItems.map(function (g) {
         return '<tr>' +
-          '<td>' + g.nome_produto + '</td><td>' + (g.codigo_produto || '-') + '</td><td>' + (g.ncm || '-') + '</td>' +
+          '<td>' + nomeParaFornecedor(g.nome_produto, marcaDoFornecedor()) + '</td><td>' + (g.codigo_produto || '-') + '</td><td>' + (g.ncm || '-') + '</td>' +
           '<td>' + formatBRL(g.preco_unitario) + '</td><td>' + g.quantidade + '</td><td>' + formatBRL(g.preco_unitario * g.quantidade) + '</td>' +
         '</tr>';
       }).join('');

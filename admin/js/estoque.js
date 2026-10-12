@@ -10,7 +10,14 @@ var TIPOS_FATOR_ESTOQUE = [
   { label: 'MRP', chave: 'mrp' },
   { label: 'Termoencolhível', chave: 'termoencolhivel' }
 ];
-var fatoresEstoque = {}; // { nylon_poli: { custo: 0, venda: 0 }, ... }
+var fatoresEstoque = {};
+var marcasComImposto = []; // marcas de fornecedores com IPI cadastrado (selo na lista)
+
+async function carregarMarcasComImposto() {
+  var { data } = await supabaseClient.from('clientes').select('marca_produto, ipi_percentual').eq('eh_fornecedor', true);
+  marcasComImposto = (data || []).filter(function (c) { return c.marca_produto && parseFloat(c.ipi_percentual) > 0; })
+    .map(function (c) { return c.marca_produto; });
+} // { nylon_poli: { custo: 0, venda: 0 }, ... }
 
 function tipoFatorDoProduto(nomeProduto) {
   var categoria = categoriaEmbalagemDoProduto(nomeProduto);
@@ -114,7 +121,7 @@ function renderEstoqueTable(list) {
       : qtdEstoque.toLocaleString('pt-BR');
 
     return '<tr>' +
-      '<td>' + p.nome_produto + (itemSujeitoIpiFornecedor(p.nome_produto) ? ' <span class="badge badge-warning" title="Thermoprint: ICMS incluso no preço + IPI acrescentado no pedido">ICMS incl. + IPI</span>' : '') + '</td>' +
+      '<td>' + p.nome_produto + (marcasComImposto.some(function (m) { return itemSujeitoIpiFornecedor(p.nome_produto, m); }) ? ' <span class="badge badge-warning" title="Fornecedor com ICMS incluso no preço + IPI acrescentado no pedido">ICMS incl. + IPI</span>' : '') + '</td>' +
       '<td>' + codigoCell + '</td>' +
       '<td>' + ncmCell + '</td>' +
       '<td>' + custo + '</td>' +
@@ -1112,6 +1119,7 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
     //    automaticamente); se não achar, cria novo (preço de venda fica em branco
     //    de propósito — só o custo vem da NF).
     var produtosAtuais = allProdutosEstoque.slice();
+    var marcaDoForn = (fornecedorId && fornecedoresConhecidos.find(function (f) { return f.id === fornecedorId; }) || {}).marca_produto || '';
     for (var i = 0; i < itens.length; i++) {
       var item = itens[i];
       var existenteProduto = item.produtoId
@@ -1133,7 +1141,7 @@ document.getElementById('import-confirmar-btn').addEventListener('click', async 
         // do fornecedor no documento. NCM fica em branco (só o admin preenche;
         // a IA não deve inventar um NCM que não está escrito no documento).
         var { data: novoProduto } = await supabaseClient.from('produtos_catalogo').insert({
-          nome_produto: item.descricao, codigo_produto: proximoCodigoSequencialEstoque(produtosAtuais),
+          nome_produto: aplicarMarcaNoNome(item.descricao, marcaDoForn), codigo_produto: proximoCodigoSequencialEstoque(produtosAtuais),
           quantidade_estoque: item.quantidade, preco_custo: item.valor_unitario || null,
           ncm: ncmAutomatico(item.descricao),
           preco_unitario: calcularPrecoVendaEmbalagemEstoque(item.descricao),
@@ -1253,6 +1261,7 @@ document.getElementById('btn-exportar-lista-preco').addEventListener('click', fu
   if (isAdminEstoque) {
     await carregarFatoresEstoque();
     await carregarRegrasNcm();
+    await carregarMarcasComImposto();
     iniciarCardFatores();
     iniciarCardNcm();
     loadPendentes();
