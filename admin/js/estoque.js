@@ -114,7 +114,7 @@ function renderEstoqueTable(list) {
       : qtdEstoque.toLocaleString('pt-BR');
 
     return '<tr>' +
-      '<td>' + p.nome_produto + '</td>' +
+      '<td>' + p.nome_produto + (itemSujeitoIpiFornecedor(p.nome_produto) ? ' <span class="badge badge-warning" title="Thermoprint: ICMS incluso no preço + IPI acrescentado no pedido">ICMS incl. + IPI</span>' : '') + '</td>' +
       '<td>' + codigoCell + '</td>' +
       '<td>' + ncmCell + '</td>' +
       '<td>' + custo + '</td>' +

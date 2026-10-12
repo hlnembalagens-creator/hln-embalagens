@@ -20,6 +20,11 @@ function fatorTravadoParaRole() {
 // Fator de venda de cada tipo de embalagem (definido pelo admin em Estoque > Fatores das
 // embalagens). O vendedor não digita: o fator acompanha o material do item.
 var fatoresVendaTipo = {};
+var fatoresCustoTipo = {};
+
+function ehPedidoParaFornecedor() {
+  return !!(selectedCliente && selectedCliente.eh_fornecedor);
+}
 
 function chaveTipoPorMaterial(material) {
   var m = (material || '').toLowerCase();
@@ -32,13 +37,31 @@ function chaveTipoPorMaterial(material) {
 // Fator do tipo de embalagem; sem fator definido (ou material de outro tipo), cai no Fator padrão.
 function fatorParaMaterial(material) {
   var chave = chaveTipoPorMaterial(material);
-  var fator = chave ? fatoresVendaTipo[chave] : 0;
+  // Pedido pra fornecedor (ex: Altisvac) é uma COMPRA: vale o fator de compra, não o de venda.
+  var tabela = ehPedidoParaFornecedor() ? fatoresCustoTipo : fatoresVendaTipo;
+  var fator = chave ? tabela[chave] : 0;
   return fator > 0 ? fator : fatorPadraoVacuo;
 }
 
+// Troca de cliente (comprador <-> fornecedor): refaz o fator dos itens de vácuo que ninguém ajustou à mão.
+function reaplicarFatoresVacuo() {
+  vacuoItems.forEach(function (item) {
+    if (item._fatorEditado) return;
+    item.taxa_preco_peso = fatorParaMaterial(item.material);
+    var row = document.querySelector('#vacuo-items .item-row[data-id="' + item._id + '"]');
+    if (row) {
+      row.querySelector('[data-f="taxa_preco_peso"]').value = item.taxa_preco_peso;
+      updateVacuoRowReadout(row, item);
+    }
+  });
+}
+
 async function carregarFatoresVendaTipo() {
-  var { data } = await supabaseClient.from('configuracoes').select('chave, valor').in('chave', ['fator_venda_nylon_poli', 'fator_venda_mrp', 'fator_venda_termoencolhivel']);
-  (data || []).forEach(function (r) { fatoresVendaTipo[r.chave.replace('fator_venda_', '')] = toNumber(r.valor); });
+  var { data } = await supabaseClient.from('configuracoes').select('chave, valor').in('chave', ['fator_venda_nylon_poli', 'fator_venda_mrp', 'fator_venda_termoencolhivel', 'fator_custo_nylon_poli', 'fator_custo_mrp', 'fator_custo_termoencolhivel']);
+  (data || []).forEach(function (r) {
+    if (r.chave.indexOf('fator_venda_') === 0) fatoresVendaTipo[r.chave.replace('fator_venda_', '')] = toNumber(r.valor);
+    else fatoresCustoTipo[r.chave.replace('fator_custo_', '')] = toNumber(r.valor);
+  });
 }
 
 async function carregarFatorPadrao() {
@@ -164,6 +187,7 @@ document.getElementById('select-cliente').addEventListener('change', function (e
   selectedCliente = clientesCache.find(function (c) { return c.id === id; }) || null;
   atualizarModoAltisvac();
   renderGeraisItems(); // fornecedor de etiqueta troca a quantidade pra caixas
+  reaplicarFatoresVacuo(); // fornecedor usa fator de compra
   updateTotals(); // fornecedor com IPI no cadastro muda o total
   var resumo = document.getElementById('cliente-resumo');
 
@@ -628,7 +652,12 @@ document.getElementById('select-produto-existente').addEventListener('change', f
   if (labelQtd) labelQtd.textContent = (modoFornecedorEtiqueta() && produto && rolosPorCaixaDoProduto(produto.nome_produto)) ? 'Quantidade (caixas) *' : 'Quantidade *';
   document.getElementById('select-produto-codigo-readout').textContent = produto && produto.codigo_produto ? produto.codigo_produto : '—';
   document.getElementById('select-produto-ncm-readout').textContent = produto && produto.ncm ? produto.ncm : '—';
-  document.getElementById('select-produto-preco').value = produto ? (produto.preco_unitario || 0) : '';
+  // Pedido pra fornecedor é compra: o preço sugerido é o de CUSTO, não o de venda.
+  var paraFornecedor = ehPedidoParaFornecedor();
+  document.getElementById('select-produto-preco').value = produto ? ((paraFornecedor ? produto.preco_custo : produto.preco_unitario) || 0) : '';
+  document.getElementById('select-produto-preco-hint').textContent = paraFornecedor
+    ? 'Fornecedor: preço de CUSTO do catálogo, editável só para este pedido.'
+    : 'Preenchido do catálogo, editável só para este pedido.';
 });
 
 document.getElementById('selecionar-btn-adicionar').addEventListener('click', function () {
@@ -1111,7 +1140,64 @@ function obterPixDiasTexto() {
 
 /* ===================== IMPRESSÃO (2 vias) ===================== */
 
+// Documento do pedido pra fornecedor de etiqueta: modelo, caixas, valor da caixa, total por item
+// e fechamento com IPI discriminado (ICMS já está no preço). Só mostra o que está preenchido.
+function buildViaFornecedorEtiquetaHtml(label) {
+  var dataStr = new Date().toLocaleDateString('pt-BR');
+  var fornecedor = selectedCliente || {};
+  var regra = regraImpostoFornecedor();
+  var enderecoCompleto = [fornecedor.logradouro, fornecedor.numero, fornecedor.complemento, fornecedor.bairro, fornecedor.municipio, fornecedor.uf].filter(Boolean).join(', ');
+  var valorCampo = function (id) { return (document.getElementById(id).value || '').trim(); };
+
+  var subtotal = geraisItems.reduce(function (acc, g) { return acc + g.preco_unitario * g.quantidade; }, 0);
+  var ipiValor = calcularIpiPedido();
+  var totalPedido = toNumber(valorCampo('valor_total_a_pagar'));
+
+  var linhas = geraisItems.map(function (g) {
+    var rolosPorCaixa = rolosPorCaixaDoProduto(g.nome_produto);
+    var valorUnidade = rolosPorCaixa ? formatBRL(g.preco_unitario * rolosPorCaixa) + ' / caixa' : formatBRL(g.preco_unitario) + ' / rolo';
+    return '<tr><td>' + nomeParaFornecedor(g.nome_produto) + '</td>' +
+      '<td>' + textoQuantidadeFornecedor(g) + '</td>' +
+      '<td>' + valorUnidade + '</td>' +
+      '<td>' + formatBRL(g.preco_unitario * g.quantidade) + '</td></tr>';
+  }).join('');
+
+  var linhaTotal = function (rotulo, valor, forte) {
+    return '<tr><td style="text-align:right; border:none;' + (forte ? ' font-weight:700;' : '') + '">' + rotulo + '</td>' +
+      '<td style="width:150px; text-align:right; border:none;' + (forte ? ' font-weight:700;' : '') + '">' + valor + '</td></tr>';
+  };
+  var totais = '<table style="width:100%; margin-top:6px;"><tbody>' +
+    linhaTotal('Subtotal dos itens', formatBRL(subtotal)) +
+    (regra && regra.ipi > 0 ? linhaTotal('IPI ' + formatarPercentualPedido(regra.ipi) + ' (incluído no total)', formatBRL(ipiValor)) : '') +
+    linhaTotal('TOTAL DO PEDIDO', formatBRL(totalPedido), true) +
+    '</tbody></table>';
+
+  var observacoesImposto = [];
+  if (regra && regra.icms > 0) observacoesImposto.push('ICMS de ' + formatarPercentualPedido(regra.icms) + ' já incluso nos valores unitários.');
+  if (regra && regra.ipi > 0) observacoesImposto.push('IPI de ' + formatarPercentualPedido(regra.ipi) + ' (' + formatBRL(ipiValor) + ') incluído no valor total do pedido.');
+
+  var linhaInfo = function (rotulo, valor) { return valor ? '<p><strong>' + rotulo + ':</strong> ' + valor + '</p>' : ''; };
+  var transportadora = [valorCampo('transp_empresa'), valorCampo('transp_endereco'), valorCampo('transp_tel')].filter(Boolean).join(' — ');
+
+  return '<div class="print-via">' +
+    '<div class="print-header"><div><h2>Pedido de compra — HLN Embalagens e Equipamentos</h2>CNPJ ' + HLN_DADOS_EMPRESA.cnpj + ' — Data: ' + dataStr + '</div>' +
+    '<div class="print-via-label">Via ' + (label === 'Cliente' ? 'Fornecedor' : label) + '</div></div>' +
+    '<p><strong>FORNECEDOR:</strong> ' + (fornecedor.razao_social || '') + (fornecedor.nome_fantasia ? ' (' + fornecedor.nome_fantasia + ')' : '') + '</p>' +
+    linhaInfo('ENDEREÇO', enderecoCompleto) +
+    linhaInfo('CNPJ', fornecedor.cnpj_cpf) +
+    linhaInfo('CONTATO', [fornecedor.contato_nome, fornecedor.contato_telefone, fornecedor.contato_email].filter(Boolean).join(' — ')) +
+    '<table><thead><tr><th>Produto</th><th>Quantidade</th><th>Valor unitário</th><th>Valor total</th></tr></thead><tbody>' + linhas + '</tbody></table>' +
+    totais +
+    (observacoesImposto.length ? '<p style="margin-top:8px;"><strong>' + observacoesImposto.join(' ') + '</strong></p>' : '') +
+    linhaInfo('PRAZO DE ENTREGA', valorCampo('prazo_entrega')) +
+    linhaInfo('FORMA DE PAGAMENTO', formatarFormaPagamento()) +
+    linhaInfo('TRANSPORTADORA', transportadora) +
+    linhaInfo('OBSERVAÇÃO', valorCampo('observacao')) +
+  '</div>';
+}
+
 function buildViaHtml(label) {
+  if (modoFornecedorEtiqueta()) return buildViaFornecedorEtiquetaHtml(label);
   var dataStr = new Date().toLocaleDateString('pt-BR');
   var cliente = selectedCliente || {};
   var enderecoCompleto = [

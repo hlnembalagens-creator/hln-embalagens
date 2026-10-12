@@ -31,13 +31,14 @@ function rolosPorCaixaDoProduto(nomeProduto) {
   return medidas ? rolosPorCaixaEtiqueta(medidas.largura, medidas.metragem) : null;
 }
 
-// Itens do fornecedor Thermoprint que levam IPI acrescentado (ICMS já vem incluso no preço):
-// etiqueta térmica de 40 ou 60 mm e bobina térmica 80x40, sempre de 30 m.
+// Itens do fornecedor Thermoprint — identificados pelo "THERMO" no nome do produto (ex:
+// "Etiqueta 60X40 - 30M - THERMO"): preço já com ICMS incluso e IPI acrescentado ao total.
+// Produtos de 30 m de outros fornecedores (sem THERMO no nome) ficam fora da regra.
 function itemSujeitoIpiFornecedor(nomeProduto) {
-  var nome = String(nomeProduto || '').toUpperCase();
-  var metr = nome.match(/(\d{2})\s*(?:MTS?|METROS?|M)(?![A-Z])/);
-  if (!metr || parseInt(metr[1], 10) !== 30) return false;
-  if (nome.indexOf('BOBINA') !== -1) return /80\s*X\s*40/.test(nome);
-  var larg = nome.match(/(\d{2,3})\s*X/);
-  return !!(larg && (nome.indexOf('ETIQUETA') !== -1 || nome.indexOf('ETQ') !== -1) && [40, 60].indexOf(parseInt(larg[1], 10)) !== -1);
+  return /THERMO/i.test(String(nomeProduto || ''));
+}
+
+// Nome como o fornecedor conhece (sem a marca THERMO que usamos só pra identificar).
+function nomeParaFornecedor(nomeProduto) {
+  return String(nomeProduto || '').replace(/\s*-?\s*THERMO\b/i, '').trim();
 }
