@@ -951,10 +951,19 @@ async function processarPedidoEImprimir(errorEl) {
   document.getElementById('print-sheet').innerHTML = buildViaHtml('Cliente') + buildViaHtml('Empresa');
   document.getElementById('orcamento-sheet').innerHTML = ''; // evita sobrepor com um orçamento gerado antes
 
-  var nomeCliente = selectedCliente.razao_social || selectedCliente.nome_fantasia || 'Pedido';
-  document.title = nomeCliente + ' - Portal HLN';
+  document.title = tituloPdfPedido();
   window.print();
   return true;
+}
+
+// Nome sugerido ao salvar o PDF (vem do document.title). Pedido a fornecedor leva a data do dia
+// (DD-MM-AAAA, sem barra pra não quebrar o nome do arquivo); pedido de cliente segue como antes.
+function tituloPdfPedido() {
+  var nome = selectedCliente.razao_social || selectedCliente.nome_fantasia || 'Pedido';
+  if (!ehPedidoParaFornecedor()) return nome + ' - Portal HLN';
+  var d = new Date();
+  var data = String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear();
+  return 'Pedido de compra - ' + nome + ' - ' + data;
 }
 
 async function processarPedidoSoSalvar(errorEl) {
@@ -1349,8 +1358,7 @@ document.getElementById('btn-imprimir').addEventListener('click', function () {
 
   // O nome sugerido ao salvar como PDF vem do document.title — troca temporariamente
   // para o nome do cliente, assim os PDFs saem identificados em vez de todos com o mesmo nome.
-  var nomeCliente = selectedCliente.razao_social || selectedCliente.nome_fantasia || 'Pedido';
-  document.title = nomeCliente + ' - Portal HLN';
+  document.title = tituloPdfPedido();
 
   window.print();
 });
