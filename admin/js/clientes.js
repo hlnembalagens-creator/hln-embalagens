@@ -29,6 +29,9 @@ function setFormValues(cliente) {
   if (tipoCadastroEl) tipoCadastroEl.value = (cliente && cliente.eh_fornecedor) ? 'fornecedor' : 'cliente';
   var tipoFornecedorEl = document.getElementById('tipo_fornecedor');
   if (tipoFornecedorEl) tipoFornecedorEl.value = (cliente && cliente.tipo_fornecedor) || '';
+  var icmsEl = document.getElementById('icms_incluso_percentual'), ipiEl = document.getElementById('ipi_percentual');
+  if (icmsEl) icmsEl.value = cliente && cliente.icms_incluso_percentual != null ? String(cliente.icms_incluso_percentual).replace('.', ',') : '';
+  if (ipiEl) ipiEl.value = cliente && cliente.ipi_percentual != null ? String(cliente.ipi_percentual).replace('.', ',') : '';
   atualizarCampoTipoFornecedor();
   var naoContabilizarEl = document.getElementById('nao_contabilizar');
   if (naoContabilizarEl) naoContabilizarEl.checked = !!(cliente && cliente.nao_contabilizar);
@@ -39,7 +42,19 @@ function atualizarCampoTipoFornecedor() {
   var tipoCadastro = document.getElementById('tipo_cadastro');
   var campo = document.getElementById('campo-tipo-fornecedor');
   if (!tipoCadastro || !campo) return;
-  campo.style.display = tipoCadastro.value === 'fornecedor' ? '' : 'none';
+  var visivel = tipoCadastro.value === 'fornecedor' ? '' : 'none';
+  campo.style.display = visivel;
+  ['campo-icms-fornecedor', 'campo-ipi-fornecedor'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = visivel;
+  });
+}
+
+function numeroDoCampo(id) {
+  var el = document.getElementById(id);
+  if (!el || !el.value.trim()) return null;
+  var n = parseFloat(el.value.trim().replace(/\./g, '').replace(',', '.'));
+  return isNaN(n) ? null : n;
 }
 
 function mostrarFormularioCliente() {
@@ -54,6 +69,7 @@ function resetForm() {
   if (tipoCadastroElReset) tipoCadastroElReset.value = 'cliente';
   var tipoFornecedorElReset = document.getElementById('tipo_fornecedor');
   if (tipoFornecedorElReset) tipoFornecedorElReset.value = '';
+  ['icms_incluso_percentual', 'ipi_percentual'].forEach(function (id) { var el = document.getElementById(id); if (el) el.value = ''; });
   atualizarCampoTipoFornecedor();
   document.getElementById('form-title').textContent = 'Novo cliente';
   document.getElementById('cliente-error').style.display = 'none';
@@ -483,6 +499,14 @@ document.getElementById('cliente-form').addEventListener('submit', async functio
     values.tipo_fornecedor = values.eh_fornecedor ? (tipoFornecedorSubmit.value || null) : null;
   } else {
     values.tipo_fornecedor = clienteOriginalSubmit ? (clienteOriginalSubmit.tipo_fornecedor || null) : null;
+  }
+
+  if (document.getElementById('ipi_percentual')) {
+    values.ipi_percentual = values.eh_fornecedor ? numeroDoCampo('ipi_percentual') : null;
+    values.icms_incluso_percentual = values.eh_fornecedor ? numeroDoCampo('icms_incluso_percentual') : null;
+  } else if (clienteOriginalSubmit) {
+    values.ipi_percentual = clienteOriginalSubmit.ipi_percentual != null ? clienteOriginalSubmit.ipi_percentual : null;
+    values.icms_incluso_percentual = clienteOriginalSubmit.icms_incluso_percentual != null ? clienteOriginalSubmit.icms_incluso_percentual : null;
   }
 
   var naoContabilizarSubmit = document.getElementById('nao_contabilizar');

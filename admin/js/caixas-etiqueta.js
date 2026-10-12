@@ -30,3 +30,14 @@ function rolosPorCaixaDoProduto(nomeProduto) {
   var medidas = medidasEtiqueta(nomeProduto);
   return medidas ? rolosPorCaixaEtiqueta(medidas.largura, medidas.metragem) : null;
 }
+
+// Itens do fornecedor Thermoprint que levam IPI acrescentado (ICMS já vem incluso no preço):
+// etiqueta térmica de 40 ou 60 mm e bobina térmica 80x40, sempre de 30 m.
+function itemSujeitoIpiFornecedor(nomeProduto) {
+  var nome = String(nomeProduto || '').toUpperCase();
+  var metr = nome.match(/(\d{2})\s*(?:MTS?|METROS?|M)(?![A-Z])/);
+  if (!metr || parseInt(metr[1], 10) !== 30) return false;
+  if (nome.indexOf('BOBINA') !== -1) return /80\s*X\s*40/.test(nome);
+  var larg = nome.match(/(\d{2,3})\s*X/);
+  return !!(larg && (nome.indexOf('ETIQUETA') !== -1 || nome.indexOf('ETQ') !== -1) && [40, 60].indexOf(parseInt(larg[1], 10)) !== -1);
+}

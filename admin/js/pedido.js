@@ -164,6 +164,7 @@ document.getElementById('select-cliente').addEventListener('change', function (e
   selectedCliente = clientesCache.find(function (c) { return c.id === id; }) || null;
   atualizarModoAltisvac();
   renderGeraisItems(); // fornecedor de etiqueta troca a quantidade pra caixas
+  updateTotals(); // fornecedor com IPI no cadastro muda o total
   var resumo = document.getElementById('cliente-resumo');
 
   if (!selectedCliente) {
@@ -717,6 +718,40 @@ function atualizarValorVista() {
   document.getElementById('valor_total_a_pagar_vista').value = (valorCheio * (1 - desconto / 100)).toFixed(2);
 }
 
+// Fornecedor com imposto no cadastro (ex: Thermoprint — ICMS 18% já incluso no preço, IPI 3,25%
+// acrescentado nos itens de 30 m): o IPI entra no total do pedido.
+function regraImpostoFornecedor() {
+  if (!selectedCliente || !selectedCliente.eh_fornecedor) return null;
+  var ipi = parseFloat(selectedCliente.ipi_percentual) || 0;
+  var icms = parseFloat(selectedCliente.icms_incluso_percentual) || 0;
+  return (ipi > 0 || icms > 0) ? { ipi: ipi, icms: icms } : null;
+}
+
+function calcularIpiPedido() {
+  var regra = regraImpostoFornecedor();
+  if (!regra || !(regra.ipi > 0)) return 0;
+  var base = geraisItems.reduce(function (acc, g) {
+    return itemSujeitoIpiFornecedor(g.nome_produto) ? acc + g.preco_unitario * g.quantidade : acc;
+  }, 0);
+  return Math.round(base * regra.ipi) / 100;
+}
+
+function formatarPercentualPedido(n) {
+  return String(n).replace('.', ',') + '%';
+}
+
+// Campos ICMS/IPI do pedido se preenchem sozinhos pela regra — sem sobrescrever texto digitado à mão.
+var textoIcmsAuto = '', textoIpiAuto = '';
+function atualizarCamposImposto(regra, ipiValor) {
+  var icmsEl = document.getElementById('icms'), ipiEl = document.getElementById('ipi');
+  var novoIcms = regra && regra.icms > 0 ? formatarPercentualPedido(regra.icms) + ' incluso no preço' : '';
+  var novoIpi = regra && regra.ipi > 0 ? formatarPercentualPedido(regra.ipi) + ' a acrescentar (' + formatBRL(ipiValor) + ')' : '';
+  if (!icmsEl.value || icmsEl.value === textoIcmsAuto) { icmsEl.value = novoIcms; }
+  if (!ipiEl.value || ipiEl.value === textoIpiAuto) { ipiEl.value = novoIpi; }
+  textoIcmsAuto = novoIcms;
+  textoIpiAuto = novoIpi;
+}
+
 function updateTotals() {
   var qtdTotal = 0, pesoTotal = 0, valorItens = 0;
 
@@ -736,8 +771,15 @@ function updateTotals() {
   document.getElementById('total-peso').textContent = pesoTotal.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
   document.getElementById('total-itens').textContent = formatBRL(valorItens);
 
+  var regraImposto = regraImpostoFornecedor();
+  var ipiValor = calcularIpiPedido();
+  document.getElementById('total-ipi-box').style.display = (regraImposto && regraImposto.ipi > 0) ? '' : 'none';
+  document.getElementById('total-ipi-label').textContent = regraImposto && regraImposto.ipi > 0 ? 'IPI ' + formatarPercentualPedido(regraImposto.ipi) + ' (somado ao total)' : 'IPI';
+  document.getElementById('total-ipi').textContent = formatBRL(ipiValor);
+  atualizarCamposImposto(regraImposto, ipiValor);
+
   if (!valorTotalManuallyEdited) {
-    document.getElementById('valor_total_a_pagar').value = valorItens.toFixed(2);
+    document.getElementById('valor_total_a_pagar').value = (valorItens + ipiValor).toFixed(2);
   }
   atualizarValorVista();
 }
@@ -1357,7 +1399,7 @@ async function iniciarEdicaoPedido(pedidoId) {
   var somaItensAtual = vacuoItems.reduce(function (acc, item) { return acc + calcVacuo(item).vl_total; }, 0) +
     geraisItems.reduce(function (acc, g) { return acc + g.preco_unitario * g.quantidade; }, 0);
   var valorSalvo = parseFloat(pedido.valor_total_a_pagar) || 0;
-  valorTotalManuallyEdited = Math.abs(somaItensAtual - valorSalvo) > 0.01;
+  valorTotalManuallyEdited = Math.abs((somaItensAtual + calcularIpiPedido()) - valorSalvo) > 0.01;
   document.getElementById('valor_total_a_pagar').value = pedido.valor_total_a_pagar || 0;
 
   document.getElementById('desconto_percentual').value = pedido.desconto_percentual || '';
