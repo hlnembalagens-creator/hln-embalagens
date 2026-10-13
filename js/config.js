@@ -13,10 +13,7 @@ var HLN_CONFIG = {
   // Mensagem única pré-preenchida em TODOS os botões de WhatsApp do site.
   whatsappDefaultMessage: 'Olá! Vim pelo site da HLN e gostaria de um orçamento.',
 
-  // Dados da empresa (rodapé). Fonte: cartão CNPJ (Receita Federal).
-  razaoSocial: '66.878.650 ANTONIO NELSON MARTINS JUNIOR',
-  cnpj: '66.878.650/0001-42',
-  cidadeUf: 'Americana/SP',
+  // Textos do rodapé.
   areaAtendimento: 'Atendemos Campinas e região metropolitana (RMC)',
   horarioAtendimento: 'Segunda a sexta, 08h às 18h'
 };
