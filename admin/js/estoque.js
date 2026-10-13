@@ -30,9 +30,11 @@ function ipiDoProduto(nomeProduto) {
   return 0;
 }
 
-// Custo de compra já com o IPI do fornecedor incluso (6 casas pra não perder centavo no total).
+// Custo de compra já com o IPI do fornecedor incluso, arredondado PARA CIMA no centavo (2 casas).
+// O round(…, 1e6) antes do ceil evita que 4,13 (exato) vire 4,14 por ruído de ponto flutuante.
 function custoComIpi(precoFornecedor, ipiPercentual) {
-  return Math.round(precoFornecedor * (1 + ipiPercentual / 100) * 1000000) / 1000000;
+  var centavos = Math.round(precoFornecedor * (1 + ipiPercentual / 100) * 100 * 1000000) / 1000000;
+  return Math.ceil(centavos) / 100;
 } // { nylon_poli: { custo: 0, venda: 0 }, ... }
 
 function tipoFatorDoProduto(nomeProduto) {
