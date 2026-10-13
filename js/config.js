@@ -10,5 +10,13 @@ var HLN_CONFIG = {
   // Usando a URL do Vercel enquanto o domínio próprio não é registrado/apontado.
   siteUrl: 'https://hln-embalagens.vercel.app',
 
-  whatsappDefaultMessage: 'Olá! Vim pelo site e gostaria de mais informações.'
+  // Mensagem única pré-preenchida em TODOS os botões de WhatsApp do site.
+  whatsappDefaultMessage: 'Olá! Vim pelo site da HLN e gostaria de um orçamento.',
+
+  // Dados da empresa (rodapé). Fonte: cartão CNPJ (Receita Federal).
+  razaoSocial: '66.878.650 ANTONIO NELSON MARTINS JUNIOR',
+  cnpj: '66.878.650/0001-42',
+  cidadeUf: 'Americana/SP',
+  areaAtendimento: 'Atendemos Campinas e região metropolitana (RMC)',
+  horarioAtendimento: 'Segunda a sexta, 08h às 18h'
 };

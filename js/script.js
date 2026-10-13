@@ -24,8 +24,13 @@ document.addEventListener('DOMContentLoaded', function () {
   // Preenche automaticamente todos os links de WhatsApp e telefones a partir de config.js
   if (typeof HLN_CONFIG !== 'undefined') {
     document.querySelectorAll('[data-wa-link]').forEach(function (el) {
-      var message = el.getAttribute('data-wa-message') || HLN_CONFIG.whatsappDefaultMessage;
-      el.href = 'https://wa.me/' + HLN_CONFIG.whatsappNumber + '?text=' + encodeURIComponent(message);
+      // Número e mensagem vêm sempre de config.js (uma única configuração para o site todo).
+      el.href = 'https://wa.me/' + HLN_CONFIG.whatsappNumber + '?text=' + encodeURIComponent(HLN_CONFIG.whatsappDefaultMessage);
+    });
+
+    document.querySelectorAll('[data-hln-config]').forEach(function (el) {
+      var valor = HLN_CONFIG[el.getAttribute('data-hln-config')];
+      if (valor) el.textContent = valor;
     });
 
     document.querySelectorAll('[data-phone-display]').forEach(function (el) {

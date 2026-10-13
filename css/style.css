@@ -121,6 +121,17 @@ h1, h2, h3 {
 .icon-wa { width: 20px; height: 20px; }
 
 /* ===== HEADER ===== */
+.topbar {
+  background: var(--navy-900);
+  color: #e6ecf5;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 8px 16px;
+}
+
+.footer-legal { font-size: 0.85rem; color: #b9c4d6; text-align: center; }
+
 .site-header {
   position: sticky;
   top: 0;
@@ -314,6 +325,7 @@ h1, h2, h3 {
 
 .cards-grid-4 { grid-template-columns: repeat(4, 1fr); }
 .cards-grid-5 { grid-template-columns: repeat(5, 1fr); }
+.cards-grid-6 { grid-template-columns: repeat(3, 1fr); }
 
 .card {
   background: var(--white);
@@ -536,7 +548,7 @@ h1, h2, h3 {
   .hero-logo { order: -1; max-width: 220px; margin: 0 auto 24px; }
   .brand-mark--hero { font-size: 2.2px; }
   .contact-grid { grid-template-columns: 1fr; }
-  .cards-grid, .cards-grid-4, .cards-grid-5 { grid-template-columns: repeat(2, 1fr); }
+  .cards-grid, .cards-grid-4, .cards-grid-5, .cards-grid-6 { grid-template-columns: repeat(2, 1fr); }
   .stats-grid { grid-template-columns: 1fr; }
 }
 
@@ -556,6 +568,6 @@ h1, h2, h3 {
   .main-nav.open { display: flex; }
   .nav-toggle { display: flex; }
   .header-actions .btn-whatsapp span { display: none; }
-  .cards-grid, .cards-grid-4, .cards-grid-5 { grid-template-columns: 1fr; }
+  .cards-grid, .cards-grid-4, .cards-grid-5, .cards-grid-6 { grid-template-columns: 1fr; }
   .section { padding: 60px 0; }
 }
