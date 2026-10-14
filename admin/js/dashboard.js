@@ -52,7 +52,7 @@ function descricaoPeriodo() {
 
 // Uma única busca de pedidos confirmados, reaproveitada pelos KPIs, gráficos
 // e rankings — o filtro de mês/ano trabalha em cima desses dados já carregados.
-async function buscarPedidosDashboard(vendedorId) {
+async function buscarPedidosDashboard() {
   var { data, error } = await supabaseClient
     .from('pedidos')
     .select('id, numero, cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, nf_emitida, nf_numero, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor)')
@@ -62,10 +62,9 @@ async function buscarPedidosDashboard(vendedorId) {
   if (error) return { error: error };
 
   // Cadastros marcados como fornecedor (ex: Altisvac) são pedidos feitos por nós a
-  // eles, não vendas — não entram nos números. Vendedor só enxerga as vendas dele.
+  // eles, não vendas — não entram nos números. Todos os perfis veem as vendas de todo mundo.
   var pedidos = (data || []).filter(function (p) {
     if (!p.cliente_id || !p.clientes || p.clientes.eh_fornecedor) return false;
-    if (vendedorId && p.vendedor_id !== vendedorId) return false;
     return true;
   });
 
@@ -318,7 +317,7 @@ function materialVacuoCanonico(material) {
   return 'Nylon Poli'; // inclui variações de digitação e pedidos antigos sem material
 }
 
-async function carregarItensProdutos(vendedorId) {
+async function carregarItensProdutos() {
   var [geraisRes, vacuoRes] = await Promise.all([
     supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, produtos_catalogo(nome_produto), pedidos!inner(tipo, vendedor_id, created_at, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido'),
     supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, largura_m, comprimento_m, espessura_micras, pedidos!inner(tipo, vendedor_id, created_at, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido')
@@ -327,10 +326,9 @@ async function carregarItensProdutos(vendedorId) {
   if (geraisRes.error && vacuoRes.error) return false;
 
   // Filtra fora itens de pedidos feitos a cadastros marcados como fornecedor
-  // (ex: Altisvac) — são compras nossas, não vendas. Vendedor só enxerga as vendas dele.
+  // (ex: Altisvac) — são compras nossas, não vendas.
   function naoEhFornecedor(i) {
     if (!i.pedidos || (i.pedidos.clientes && i.pedidos.clientes.eh_fornecedor)) return false;
-    if (vendedorId && i.pedidos.vendedor_id !== vendedorId) return false;
     return true;
   }
   itensGeraisBrutos = (geraisRes.data || []).filter(naoEhFornecedor);
@@ -420,24 +418,18 @@ function iniciarFiltros() {
   var auth = await window.ADMIN_AUTH_READY;
   if (!auth) return;
 
-  // Vendedor só enxerga os próprios números — admin vê tudo, de todo mundo.
-  var vendedorId = ['vendedor', 'vendedor_ext', 'vendedor_int'].indexOf(auth.profile.role) !== -1 ? auth.session.user.id : null;
-  if (vendedorId) {
-    var aviso = document.createElement('p');
-    aviso.style.cssText = 'margin-top:-16px; margin-bottom:20px; color:var(--gray-400); font-size:0.9rem;';
-    aviso.textContent = 'Mostrando apenas as suas vendas.';
-    document.querySelector('.admin-title').insertAdjacentElement('afterend', aviso);
-  }
+  // Todo mundo vende: a dashboard conta as vendas de todos os perfis. Só a marcação de NF fica com o admin.
+  var ehVendedor = ['vendedor', 'vendedor_ext', 'vendedor_int'].indexOf(auth.profile.role) !== -1;
 
-  var resultado = await buscarPedidosDashboard(vendedorId);
+  var resultado = await buscarPedidosDashboard();
   if (resultado.error) {
     document.getElementById('top-clientes').innerHTML = '<p class="dashboard-empty">Erro ao carregar: ' + resultado.error.message + '</p>';
     return;
   }
   todosPedidos = resultado.pedidos;
-  podeMarcarNf = !vendedorId;
+  podeMarcarNf = !ehVendedor;
 
-  var itensOk = await carregarItensProdutos(vendedorId);
+  var itensOk = await carregarItensProdutos();
   erroProdutos = !itensOk;
 
   iniciarFiltros();

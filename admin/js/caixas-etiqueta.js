@@ -63,6 +63,26 @@ function nomeParaFornecedor(nomeProduto, marca) {
   return nome.replace(new RegExp('\\s*-?\\s*' + escapada + '\\b', 'i'), '').trim();
 }
 
+// Marcas de TODOS os fornecedores (a lista é completada com as cadastradas em Clientes). Nenhum documento
+// (orçamento, pedido de venda ou de compra) mostra a marca: ela é só um marcador interno.
+var MARCAS_FORNECEDOR = ['THERMO', 'ALTISVAC', 'CAPITAL', 'BRASIL PDV'];
+
+function registrarMarcasFornecedor(clientes) {
+  (clientes || []).forEach(function (c) {
+    var m = String((c && c.marca_produto) || '').trim().toUpperCase();
+    if (m && MARCAS_FORNECEDOR.indexOf(m) === -1) MARCAS_FORNECEDOR.push(m);
+  });
+}
+
+function nomeSemMarcas(nomeProduto) {
+  var nome = String(nomeProduto || '').trim();
+  MARCAS_FORNECEDOR.forEach(function (m) {
+    var escapada = m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    nome = nome.replace(new RegExp('\\s*-?\\s*\\b' + escapada + '\\b', 'gi'), '');
+  });
+  return nome.replace(/^\s*-\s*/, '').replace(/\s*-\s*$/, '').replace(/\s{2,}/g, ' ').trim();
+}
+
 // Produto novo vindo de um fornecedor com marca já nasce identificado: "<descrição> - MARCA".
 function aplicarMarcaNoNome(nomeProduto, marca) {
   var nome = String(nomeProduto || '').trim();

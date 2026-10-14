@@ -142,6 +142,7 @@ async function loadClientesSelect() {
   var { data, error } = await supabaseClient.from('clientes').select('*').order('razao_social');
   if (error) { showToast('Erro ao carregar clientes: ' + error.message, 'error'); return; }
   clientesCache = data || [];
+  registrarMarcasFornecedor(clientesCache);
 
   // Vendedor não faz pedido "pra" um fornecedor (ex: Altisvac) — isso é coisa de admin/estoque.
   if (ROLES_VENDEDOR.indexOf(currentUserRole) !== -1) {
@@ -1192,7 +1193,7 @@ function buildViaFornecedorEtiquetaHtml(label) {
   var linhas = geraisItems.map(function (g) {
     var rolosPorCaixa = rolosPorCaixaDoProduto(g.nome_produto);
     var valorUnidade = rolosPorCaixa ? formatBRL(g.preco_unitario * rolosPorCaixa) + ' / caixa' : formatBRL(g.preco_unitario) + (ehItemEmRolos(g.nome_produto) ? ' / rolo' : ' / un.');
-    return '<tr><td>' + nomeParaFornecedor(g.nome_produto, marcaDoFornecedor()) + '</td>' +
+    return '<tr><td>' + nomeSemMarcas(g.nome_produto) + '</td>' +
       '<td>' + textoQuantidadeFornecedor(g) + '</td>' +
       '<td>' + valorUnidade + '</td>' +
       '<td>' + formatBRL(g.preco_unitario * g.quantidade) + '</td></tr>';
@@ -1254,11 +1255,11 @@ function buildViaHtml(label) {
 
   var geraisRowsHtml = modoFornecedorEtiqueta()
     ? geraisItems.map(function (g) {
-        return '<tr><td>' + g.nome_produto + '</td><td>' + textoQuantidadeFornecedor(g) + '</td></tr>';
+        return '<tr><td>' + nomeSemMarcas(g.nome_produto) + '</td><td>' + textoQuantidadeFornecedor(g) + '</td></tr>';
       }).join('')
     : geraisItems.map(function (g) {
         return '<tr>' +
-          '<td>' + nomeParaFornecedor(g.nome_produto, marcaDoFornecedor()) + '</td><td>' + (g.codigo_produto || '-') + '</td><td>' + (g.ncm || '-') + '</td>' +
+          '<td>' + nomeSemMarcas(g.nome_produto) + '</td><td>' + (g.codigo_produto || '-') + '</td><td>' + (g.ncm || '-') + '</td>' +
           '<td>' + formatBRL(g.preco_unitario) + '</td><td>' + g.quantidade + '</td><td>' + formatBRL(g.preco_unitario * g.quantidade) + '</td>' +
         '</tr>';
       }).join('');
@@ -1328,7 +1329,7 @@ function buildOrcamentoHtml() {
 
   var geraisRowsHtml = geraisItems.map(function (g) {
     return '<tr>' +
-      '<td>' + g.nome_produto + '</td><td>—</td>' +
+      '<td>' + nomeSemMarcas(g.nome_produto) + '</td><td>—</td>' +
       '<td>' + g.quantidade + '</td><td>' + formatBRL(g.preco_unitario) + '</td><td>' + formatBRL(g.preco_unitario * g.quantidade) + '</td>' +
     '</tr>';
   }).join('');
