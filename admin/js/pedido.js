@@ -1370,19 +1370,23 @@ function buildOrcamentoHtml() {
 
 var originalDocumentTitle = document.title;
 
-document.getElementById('btn-imprimir').addEventListener('click', function () {
+// Imprimir SEMPRE salva o pedido antes (igual ao Salvar pedido → Imprimir): antes ele só imprimia e o pedido
+// ficava de fora da dashboard, do financeiro e do histórico. Reimprimir um pedido já salvo apenas o atualiza.
+document.getElementById('btn-imprimir').addEventListener('click', async function () {
+  var btn = this;
+  var errorEl = document.getElementById('pedido-error');
   if (!selectedCliente) {
     showToast('Selecione um cliente antes de imprimir.', 'warning');
     return;
   }
-  document.getElementById('print-sheet').innerHTML = buildViaHtml('Cliente') + buildViaHtml('Empresa');
-  document.getElementById('orcamento-sheet').innerHTML = ''; // evita sobrepor com um orçamento gerado antes
+  if (!validarPedido(errorEl)) return;
 
-  // O nome sugerido ao salvar como PDF vem do document.title — troca temporariamente
-  // para o nome do cliente, assim os PDFs saem identificados em vez de todos com o mesmo nome.
-  document.title = tituloPdfPedido();
-
-  window.print();
+  btn.disabled = true;
+  var textoOriginal = btn.textContent;
+  btn.textContent = 'Salvando...';
+  await processarPedidoEImprimir(errorEl);
+  btn.disabled = false;
+  btn.textContent = textoOriginal;
 });
 
 document.getElementById('btn-orcamento').addEventListener('click', function () {
