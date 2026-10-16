@@ -982,14 +982,18 @@ async function processarPedidoEImprimir(errorEl) {
   return true;
 }
 
-// Nome sugerido ao salvar o PDF (vem do document.title). Pedido a fornecedor leva a data do dia
-// (DD-MM-AAAA, sem barra pra não quebrar o nome do arquivo); pedido de cliente segue como antes.
+// Data de hoje no formato DD-MM-AAAA (sem barra, pra não quebrar o nome do arquivo).
+function dataHojeParaArquivo() {
+  var d = new Date();
+  return String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear();
+}
+
+// Nome sugerido ao salvar o PDF (vem do document.title): sempre leva a data do dia.
+// Fornecedor: 'Pedido de compra - <fornecedor> - DD-MM-AAAA'; cliente: 'Pedido - <cliente> - DD-MM-AAAA'.
 function tituloPdfPedido() {
   var nome = selectedCliente.razao_social || selectedCliente.nome_fantasia || 'Pedido';
-  if (!ehPedidoParaFornecedor()) return nome + ' - Portal HLN';
-  var d = new Date();
-  var data = String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear();
-  return 'Pedido de compra - ' + nome + ' - ' + data;
+  var prefixo = ehPedidoParaFornecedor() ? 'Pedido de compra' : 'Pedido';
+  return prefixo + ' - ' + nome + ' - ' + dataHojeParaArquivo();
 }
 
 async function processarOrcamentoEEnviarEmail(errorEl) {
@@ -1400,7 +1404,7 @@ document.getElementById('orcamento-preview-confirmar').addEventListener('click',
   document.getElementById('print-sheet').innerHTML = ''; // evita sobrepor com um romaneio gerado antes
 
   var nomeCliente = selectedCliente.razao_social || selectedCliente.nome_fantasia || 'Orcamento';
-  document.title = 'Orçamento - ' + nomeCliente + ' - Portal HLN';
+  document.title = 'Orçamento - ' + nomeCliente + ' - ' + dataHojeParaArquivo();
 
   window.print();
 
