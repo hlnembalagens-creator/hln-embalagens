@@ -41,7 +41,15 @@ function addDiasFinanceiro(data, dias) {
 }
 
 async function sincronizarFinanceiroDoPedido(pedido, clienteNome, ehFornecedor, naoContabilizar) {
-  if (!pedido || pedido.tipo !== 'pedido') return;
+  if (!pedido) return;
+  if (pedido.tipo !== 'pedido') {
+    // Pedido que virou orçamento sai da contabilidade: apaga entradas/saídas geradas por ele.
+    if (pedido.id) {
+      await supabaseClient.from('financeiro_entradas').delete().eq('pedido_id', pedido.id);
+      await supabaseClient.from('financeiro_saidas').delete().eq('pedido_id', pedido.id);
+    }
+    return;
+  }
 
   // Limpa dos dois lados — se o cadastro virou/deixou de ser fornecedor entre
   // uma edição e outra, o pedido pode ter migrado de entrada pra saída (ou vice-versa).

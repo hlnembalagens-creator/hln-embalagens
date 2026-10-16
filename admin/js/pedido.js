@@ -863,7 +863,10 @@ function validarPedido(errorEl) {
   return true;
 }
 
-async function salvarPedidoNoBanco(tipo, statusOrcamento) {
+// Fluxo: "Salvar pedido" grava sempre como pedido; os botões do menu pós-salvar decidem o destino final.
+// mudarTipo=true troca o tipo de um registro já salvo (pedido → orçamento ao emitir orçamento;
+// orçamento → pedido ao imprimir). Sem mudarTipo, uma edição mantém o tipo que o registro já tem.
+async function salvarPedidoNoBanco(tipo, statusOrcamento, mudarTipo) {
   var formaPagamento = document.getElementById('forma_pagamento').value;
 
   var pedidoPayload = {
@@ -897,8 +900,11 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
   var pedido, pedidoError;
 
   if (pedidoEmEdicaoId) {
-    // Edição: atualiza o registro existente sem tocar em tipo/status_orcamento —
-    // isso só muda pelos botões dedicados (Converter em pedido / Marcar como não convertido).
+    // Edição: atualiza o registro existente; o tipo só muda quando pedido pelo menu (mudarTipo).
+    if (mudarTipo && pedidoEmEdicaoTipo !== tipo) {
+      pedidoPayload.tipo = tipo;
+      pedidoPayload.status_orcamento = statusOrcamento;
+    }
     var updateResult = await supabaseClient.from('pedidos').update(pedidoPayload).eq('id', pedidoEmEdicaoId).select().single();
     pedido = updateResult.data;
     pedidoError = updateResult.error;
@@ -943,10 +949,11 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
   pedidoEmEdicaoTipo = pedido.tipo;
   pedidoEmEdicaoPago = !!pedido.pago;
   pedidoEmEdicaoDataPagamento = pedido.data_pagamento || null;
-  if (pedido.tipo === 'pedido') {
-    document.getElementById('edicao-banner-texto').textContent = '✏️ Editando Pedido nº ' + pedido.numero;
-    document.getElementById('edicao-banner').style.display = 'flex';
-  }
+  var rotuloTipo = pedido.tipo === 'orcamento' ? 'Orçamento' : 'Pedido';
+  document.getElementById('edicao-banner-texto').textContent = '✏️ Editando ' + rotuloTipo + ' nº ' + pedido.numero;
+  document.getElementById('edicao-banner').style.display = 'flex';
+  document.getElementById('pagina-titulo').textContent = 'Editando ' + rotuloTipo + ' nº ' + pedido.numero;
+  document.getElementById('btn-salvar-pedido').textContent = 'Salvar alterações';
   renderPedidoPagoStatus();
 
   return { pedido: pedido };
@@ -955,17 +962,17 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento) {
 /* ===================== SALVAR + IMPRIMIR / SALVAR + ENVIAR ORÇAMENTO (fluxos compartilhados) ===================== */
 
 async function processarPedidoEImprimir(errorEl) {
-  var estavaEditando = !!pedidoEmEdicaoId;
-  var result = await salvarPedidoNoBanco('pedido', null);
-
-  if (result.error) {
-    errorEl.textContent = 'Erro ao salvar pedido: ' + result.error.message;
-    errorEl.style.display = 'block';
-    return false;
+  if (pedidoEmEdicaoTipo === 'orcamento') {
+    // Imprimir as vias do pedido = o orçamento virou pedido real.
+    var result = await salvarPedidoNoBanco('pedido', 'convertido', true);
+    if (result.error) {
+      errorEl.textContent = 'Erro ao converter em pedido: ' + result.error.message;
+      errorEl.style.display = 'block';
+      return false;
+    }
+    showToast('Orçamento nº ' + result.pedido.numero + ' convertido em pedido.', 'ok');
+    atualizarAlertaOrcamentosPendentes();
   }
-
-  showToast((estavaEditando ? 'Pedido nº ' + result.pedido.numero + ' atualizado com sucesso.' : 'Pedido nº ' + result.pedido.numero + ' salvo com sucesso.'), 'ok');
-  atualizarAlertaOrcamentosPendentes();
 
   document.getElementById('print-sheet').innerHTML = buildViaHtml('Cliente') + buildViaHtml('Empresa');
   document.getElementById('orcamento-sheet').innerHTML = ''; // evita sobrepor com um orçamento gerado antes
@@ -985,21 +992,6 @@ function tituloPdfPedido() {
   return 'Pedido de compra - ' + nome + ' - ' + data;
 }
 
-async function processarPedidoSoSalvar(errorEl) {
-  var estavaEditando = !!pedidoEmEdicaoId;
-  var result = await salvarPedidoNoBanco('pedido', null);
-
-  if (result.error) {
-    errorEl.textContent = 'Erro ao salvar pedido: ' + result.error.message;
-    errorEl.style.display = 'block';
-    return false;
-  }
-
-  showToast((estavaEditando ? 'Pedido nº ' + result.pedido.numero + ' atualizado.' : 'Pedido nº ' + result.pedido.numero + ' salvo como pendente — envie ou imprima quando quiser.'), 'ok');
-  atualizarAlertaOrcamentosPendentes();
-  return true;
-}
-
 async function processarOrcamentoEEnviarEmail(errorEl) {
   var emailDestino = (selectedCliente.contato_email || selectedCliente.email_empresa || '').trim();
   if (!emailDestino) {
@@ -1009,7 +1001,7 @@ async function processarOrcamentoEEnviarEmail(errorEl) {
   }
 
   var estavaEditando = !!pedidoEmEdicaoId;
-  var result = await salvarPedidoNoBanco('orcamento', 'pendente');
+  var result = await salvarPedidoNoBanco('orcamento', 'pendente', true);
 
   if (result.error) {
     errorEl.textContent = 'Erro ao salvar orçamento: ' + result.error.message;
@@ -1084,9 +1076,32 @@ async function processarOrcamentoEEnviarEmail(errorEl) {
   return true;
 }
 
-document.getElementById('btn-salvar-pedido').addEventListener('click', function () {
+// Salvar pedido = grava JÁ como pedido (financeiro e dashboard incluídos). Depois abre o menu
+// com Imprimir / Orçamento. Salvar de novo apenas atualiza o mesmo pedido.
+document.getElementById('btn-salvar-pedido').addEventListener('click', async function () {
+  var btn = this;
   var errorEl = document.getElementById('pedido-error');
   if (!validarPedido(errorEl)) return;
+
+  var textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  var estavaEditando = !!pedidoEmEdicaoId;
+  var result = await salvarPedidoNoBanco('pedido', null);
+  btn.disabled = false;
+  btn.textContent = result.error ? textoOriginal : 'Salvar alterações';
+
+  if (result.error) {
+    errorEl.textContent = 'Erro ao salvar pedido: ' + result.error.message;
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  var rotulo = result.pedido.tipo === 'orcamento' ? 'Orçamento' : 'Pedido';
+  showToast(rotulo + ' nº ' + result.pedido.numero + (estavaEditando ? ' atualizado.' : ' salvo.'), 'ok');
+  atualizarAlertaOrcamentosPendentes();
+
+  document.getElementById('salvar-tipo-titulo').textContent = rotulo + ' nº ' + result.pedido.numero + ' salvo';
   document.getElementById('salvar-tipo-error').style.display = 'none';
   document.getElementById('modal-salvar-tipo').classList.add('open');
 });
@@ -1109,32 +1124,9 @@ document.getElementById('salvar-tipo-imprimir').addEventListener('click', async 
   if (ok) document.getElementById('modal-salvar-tipo').classList.remove('open');
 });
 
-document.getElementById('salvar-tipo-so-salvar').addEventListener('click', async function () {
-  var btn = this;
-  var errorEl = document.getElementById('salvar-tipo-error');
-  errorEl.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = 'Salvando...';
-
-  var ok = await processarPedidoSoSalvar(errorEl);
-
-  btn.disabled = false;
-  btn.textContent = 'Só salvar (pendente)';
-  if (ok) document.getElementById('modal-salvar-tipo').classList.remove('open');
-});
-
-document.getElementById('salvar-tipo-orcamento').addEventListener('click', async function () {
-  var btn = this;
-  var errorEl = document.getElementById('salvar-tipo-error');
-  errorEl.style.display = 'none';
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
-
-  var ok = await processarOrcamentoEEnviarEmail(errorEl);
-
-  btn.disabled = false;
-  btn.textContent = 'Orçamento (enviar e-mail)';
-  if (ok) document.getElementById('modal-salvar-tipo').classList.remove('open');
+document.getElementById('salvar-tipo-orcamento').addEventListener('click', function () {
+  document.getElementById('modal-salvar-tipo').classList.remove('open');
+  abrirPreviaOrcamento();
 });
 
 /* ===================== FORMA DE PAGAMENTO (texto p/ impressão) ===================== */
@@ -1370,33 +1362,15 @@ function buildOrcamentoHtml() {
 
 var originalDocumentTitle = document.title;
 
-// Imprimir SEMPRE salva o pedido antes (igual ao Salvar pedido → Imprimir): antes ele só imprimia e o pedido
-// ficava de fora da dashboard, do financeiro e do histórico. Reimprimir um pedido já salvo apenas o atualiza.
-document.getElementById('btn-imprimir').addEventListener('click', async function () {
-  var btn = this;
-  var errorEl = document.getElementById('pedido-error');
-  if (!selectedCliente) {
-    showToast('Selecione um cliente antes de imprimir.', 'warning');
-    return;
-  }
-  if (!validarPedido(errorEl)) return;
-
-  btn.disabled = true;
-  var textoOriginal = btn.textContent;
-  btn.textContent = 'Salvando...';
-  await processarPedidoEImprimir(errorEl);
-  btn.disabled = false;
-  btn.textContent = textoOriginal;
-});
-
-document.getElementById('btn-orcamento').addEventListener('click', function () {
+// Chamado pelo menu pós-salvar ("Orçamento"): mostra a prévia; só ao confirmar o registro vira orçamento.
+function abrirPreviaOrcamento() {
   var errorEl = document.getElementById('pedido-error');
   if (!validarPedido(errorEl)) return;
 
   document.getElementById('orcamento-preview-conteudo').innerHTML = buildOrcamentoHtml();
   document.getElementById('orcamento-preview-error').style.display = 'none';
   document.getElementById('modal-orcamento-preview').classList.add('open');
-});
+}
 
 document.getElementById('orcamento-preview-cancelar').addEventListener('click', function () {
   document.getElementById('modal-orcamento-preview').classList.remove('open');
@@ -1410,7 +1384,7 @@ document.getElementById('orcamento-preview-confirmar').addEventListener('click',
   btn.disabled = true;
   btn.textContent = 'Salvando...';
 
-  var result = await salvarPedidoNoBanco('orcamento', 'pendente');
+  var result = await salvarPedidoNoBanco('orcamento', 'pendente', true);
 
   btn.disabled = false;
   btn.textContent = 'Confirmar e Imprimir';

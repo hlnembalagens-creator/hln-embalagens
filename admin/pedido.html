@@ -246,8 +246,6 @@
 
     <div class="form-actions">
       <button type="button" class="btn btn-primary" id="btn-salvar-pedido">Salvar pedido</button>
-      <button type="button" class="btn btn-outline" id="btn-imprimir">Imprimir (2 vias)</button>
-      <button type="button" class="btn btn-outline" id="btn-orcamento">Orçamento</button>
     </div>
   </div>
 </main>
@@ -373,21 +371,19 @@
   </div>
 </div>
 
-<!-- MODAL PERGUNTA: ORÇAMENTO OU IMPRIMIR -->
+<!-- MODAL PÓS-SALVAR: IMPRIMIR OU ORÇAMENTO -->
 <div class="modal-overlay no-print" id="modal-salvar-tipo">
   <div class="modal-box" style="max-width:440px;">
-    <h3>Isso é um Orçamento ou você quer Imprimir agora?</h3>
+    <h3 id="salvar-tipo-titulo">Pedido salvo</h3>
     <p style="color:var(--gray-700); margin-bottom:20px; font-size:0.9rem;">
-      Escolha <strong>Orçamento</strong> para salvar e enviar por e-mail para o cliente,
-      <strong>Imprimir</strong> para salvar e gerar as vias impressas do pedido,
-      ou <strong>Só salvar</strong> para deixar pendente no sistema e mandar/editar depois.
+      O pedido já está salvo no sistema. Quer <strong>Imprimir</strong> as vias do pedido
+      ou transformar em <strong>Orçamento</strong> (sai da contagem de pedidos e pode ser impresso ou enviado por e-mail)?
     </p>
     <p id="salvar-tipo-error" class="error-message" style="display:none;"></p>
     <div class="form-actions">
-      <button type="button" class="btn btn-primary" id="salvar-tipo-orcamento">Orçamento (enviar e-mail)</button>
-      <button type="button" class="btn btn-outline" id="salvar-tipo-imprimir">Imprimir (2 vias)</button>
-      <button type="button" class="btn btn-outline" id="salvar-tipo-so-salvar">Só salvar (pendente)</button>
-      <button type="button" class="btn btn-outline" id="salvar-tipo-cancelar">Cancelar</button>
+      <button type="button" class="btn btn-primary" id="salvar-tipo-imprimir">Imprimir (2 vias)</button>
+      <button type="button" class="btn btn-outline" id="salvar-tipo-orcamento">Orçamento</button>
+      <button type="button" class="btn btn-outline" id="salvar-tipo-cancelar">Fechar</button>
     </div>
   </div>
 </div>
