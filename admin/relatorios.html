@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatórios — Portal HLN</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+
+<header class="admin-header">
+  <div class="admin-brand">HLN Portal</div>
+  <nav class="admin-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="pedido.html">Pedido</a>
+    <a href="vendas.html">Vendas</a>
+    <a href="relatorios.html" class="active" data-role-admin>Relatórios</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="estoque.html">Estoque</a>
+    <a href="financeiro.html" data-role-admin>Financeiro</a>
+    <a href="calculadora-custo.html" data-role-admin>Calculadora de Custo</a>
+    <a href="mensagens.html">Mensagens</a>
+    <a href="usuarios.html" data-role-full-admin>Usuários</a>
+  </nav>
+  <div class="admin-user">
+    <span>Olá, <span data-user-name>—</span></span>
+    <a href="trocar-senha.html" style="color:#cfd9ea; font-size:0.85rem;">Trocar senha</a>
+    <button data-logout>Sair</button>
+  </div>
+</header>
+
+<main class="admin-main">
+  <h1 class="admin-title">Relatório de vendas por linha de produto</h1>
+
+  <div class="admin-card" style="padding:18px 24px;">
+    <div class="form-grid" style="align-items:end;">
+      <div class="form-field">
+        <label for="filtro-ano">Ano</label>
+        <select id="filtro-ano"></select>
+      </div>
+      <div class="form-field span-2">
+        <span class="hint">Considera só pedidos de venda (compras de fornecedor e cadastros fora da contabilidade ficam de fora). Os valores são a soma dos itens de cada pedido, separados por linha de produto.</span>
+      </div>
+      <div class="form-field">
+        <button type="button" class="btn btn-outline" id="btn-exportar-relatorio">Exportar Excel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-grid" id="rel-kpis">
+    <div class="kpi-card"><div class="kpi-label">Carregando...</div></div>
+  </div>
+
+  <div class="admin-card">
+    <div class="dashboard-card-title">Vendas por mês e por linha</div>
+    <div class="dashboard-card-hint">Valor vendido em cada mês, empilhado por linha de produto.</div>
+    <div class="chart-canvas-wrap" style="height:320px;"><canvas id="chart-linhas-mes"></canvas></div>
+  </div>
+
+  <div class="admin-card">
+    <div class="dashboard-card-title">Detalhe mensal</div>
+    <div class="dashboard-card-hint" id="rel-nota"></div>
+    <div class="table-scroll">
+      <table class="admin-table" id="rel-tabela">
+        <thead></thead>
+        <tbody><tr><td>Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/admin-config.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth-guard.js"></script>
+<script src="js/toast.js"></script>
+<script src="js/calc-vacuo.js"></script>
+<script src="js/excel-utils.js"></script>
+<script src="js/relatorios.js"></script>
+</body>
+</html>
