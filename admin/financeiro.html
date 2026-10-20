@@ -36,6 +36,30 @@
 <main class="admin-main">
   <h1 class="admin-title">Financeiro</h1>
 
+  <div class="admin-card" id="card-extrato">
+    <h2>Importar extrato bancário (OFX)</h2>
+    <p style="color:var(--gray-400); margin-top:-10px; margin-bottom:16px; font-size:0.85rem;">
+      Baixe o extrato em formato <strong>OFX</strong> no app do banco e escolha o arquivo. O sistema sugere o que fazer com cada lançamento
+      (dar baixa em recebimentos, vincular pagamentos a saídas já lançadas ou criar o que falta) e <strong>só grava depois que você clicar em Aplicar</strong>.
+      Importar o mesmo extrato de novo não duplica nada.
+    </p>
+    <div class="form-field" style="max-width:420px;">
+      <label for="extrato-arquivo">Arquivo do extrato (.ofx)</label>
+      <input type="file" id="extrato-arquivo" accept=".ofx,.OFX">
+    </div>
+    <p id="extrato-error" class="error-message" style="display:none;"></p>
+    <div id="extrato-resumo" style="margin:16px 0 8px;"></div>
+    <div class="table-scroll">
+      <table class="admin-table" id="extrato-tabela" style="display:none;">
+        <thead><tr><th>Data</th><th>Lançamento no banco</th><th>Valor</th><th>Ação</th><th>Detalhe</th></tr></thead>
+        <tbody id="extrato-tbody"></tbody>
+      </table>
+    </div>
+    <div class="form-actions" style="margin-top:16px;">
+      <button type="button" class="btn btn-primary" id="extrato-aplicar" style="display:none;">Aplicar</button>
+    </div>
+  </div>
+
   <div class="admin-card">
     <h2>Relatório</h2>
     <div class="form-grid" style="margin-bottom:16px;">
@@ -197,5 +221,6 @@
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
 <script src="js/financeiro.js"></script>
+<script src="js/extrato.js"></script>
 </body>
 </html>
