@@ -1091,7 +1091,10 @@ document.getElementById('btn-salvar-pedido').addEventListener('click', async fun
   btn.disabled = true;
   btn.textContent = 'Salvando...';
   var estavaEditando = !!pedidoEmEdicaoId;
-  var result = await salvarPedidoNoBanco('pedido', null);
+  // O cadastro genérico "Orçamento" (fora da contabilidade) só serve pra orçamento: salva como tal,
+  // senão ele entraria na lista de pedidos reais.
+  var ehGenerico = !!(selectedCliente && selectedCliente.nao_contabilizar);
+  var result = ehGenerico ? await salvarPedidoNoBanco('orcamento', 'pendente') : await salvarPedidoNoBanco('pedido', null);
   btn.disabled = false;
   btn.textContent = result.error ? textoOriginal : 'Salvar alterações';
 

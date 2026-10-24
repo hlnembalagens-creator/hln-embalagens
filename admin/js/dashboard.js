@@ -55,16 +55,17 @@ function descricaoPeriodo() {
 async function buscarPedidosDashboard() {
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('id, numero, cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, nf_emitida, nf_numero, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor)')
+    .select('id, numero, cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, nf_emitida, nf_numero, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor, nao_contabilizar)')
     .eq('tipo', 'pedido')
     .order('created_at', { ascending: false });
 
   if (error) return { error: error };
 
   // Cadastros marcados como fornecedor (ex: Altisvac) são pedidos feitos por nós a
-  // eles, não vendas — não entram nos números. Todos os perfis veem as vendas de todo mundo.
+  // eles, não vendas, e o cadastro genérico "Orçamento" (nao_contabilizar) não é venda de verdade —
+  // nenhum dos dois entra nos números. Todos os perfis veem as vendas de todo mundo.
   var pedidos = (data || []).filter(function (p) {
-    if (!p.cliente_id || !p.clientes || p.clientes.eh_fornecedor) return false;
+    if (!p.cliente_id || !p.clientes || p.clientes.eh_fornecedor || p.clientes.nao_contabilizar) return false;
     return true;
   });
 
@@ -319,8 +320,8 @@ function materialVacuoCanonico(material) {
 
 async function carregarItensProdutos() {
   var [geraisRes, vacuoRes] = await Promise.all([
-    supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, produtos_catalogo(nome_produto), pedidos!inner(tipo, vendedor_id, created_at, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido'),
-    supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, largura_m, comprimento_m, espessura_micras, pedidos!inner(tipo, vendedor_id, created_at, clientes(eh_fornecedor))').eq('pedidos.tipo', 'pedido')
+    supabaseClient.from('pedido_itens_gerais').select('nome_produto, quantidade, produtos_catalogo(nome_produto), pedidos!inner(tipo, vendedor_id, created_at, clientes(eh_fornecedor, nao_contabilizar))').eq('pedidos.tipo', 'pedido'),
+    supabaseClient.from('pedido_itens_vacuo').select('material, tipo, quantidade, largura_m, comprimento_m, espessura_micras, pedidos!inner(tipo, vendedor_id, created_at, clientes(eh_fornecedor, nao_contabilizar))').eq('pedidos.tipo', 'pedido')
   ]);
 
   if (geraisRes.error && vacuoRes.error) return false;
@@ -328,7 +329,7 @@ async function carregarItensProdutos() {
   // Filtra fora itens de pedidos feitos a cadastros marcados como fornecedor
   // (ex: Altisvac) — são compras nossas, não vendas.
   function naoEhFornecedor(i) {
-    if (!i.pedidos || (i.pedidos.clientes && i.pedidos.clientes.eh_fornecedor)) return false;
+    if (!i.pedidos || (i.pedidos.clientes && (i.pedidos.clientes.eh_fornecedor || i.pedidos.clientes.nao_contabilizar))) return false;
     return true;
   }
   itensGeraisBrutos = (geraisRes.data || []).filter(naoEhFornecedor);

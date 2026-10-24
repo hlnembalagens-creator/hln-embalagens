@@ -38,14 +38,14 @@
 
   <div class="admin-card">
     <div class="form-field">
-      <label for="vendas-busca-cliente">Buscar cliente</label>
-      <input type="text" id="vendas-busca-cliente" placeholder="Digite o nome do cliente...">
-      <span class="hint">Encontre o cliente e veja todos os pedidos/orçamentos dele juntos, num só lugar.</span>
+      <label for="vendas-busca-cliente">Buscar</label>
+      <input type="text" id="vendas-busca-cliente" placeholder="Nome do cliente, CNPJ, cidade ou nº do pedido (ex: 53)" autocomplete="off">
+      <span class="hint">Digite o <strong>nº do pedido ou orçamento</strong> (ex: 53 ou "pedido 53"), o <strong>nome</strong> do cliente (nome fantasia também), o <strong>CNPJ</strong> ou a <strong>cidade</strong>. Você vê todos os pedidos/orçamentos do cliente juntos, com o pedido buscado destacado.</span>
     </div>
   </div>
 
   <div id="vendas-resultados">
-    <p style="color:var(--gray-400); text-align:center; padding:30px 0;">Digite o nome de um cliente acima pra ver as vendas dele.</p>
+    <p style="color:var(--gray-400); text-align:center; padding:30px 0;">Digite um nº de pedido, nome de cliente, CNPJ ou cidade acima.</p>
   </div>
 </main>
 

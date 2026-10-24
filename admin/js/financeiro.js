@@ -241,7 +241,7 @@ async function gerarComissao(periodo) {
     .from('pedidos')
     // pedidos tem duas relações com profiles (created_by e vendedor_id) — precisa
     // dizer qual usar, senão o PostgREST recusa o embed por ambiguidade.
-    .select('vendedor_id, valor_total_a_pagar, profiles!vendedor_id(nome_exibicao, comissao_percentual, role)')
+    .select('vendedor_id, valor_total_a_pagar, clientes(eh_fornecedor, nao_contabilizar), profiles!vendedor_id(nome_exibicao, comissao_percentual, role)')
     .eq('tipo', 'pedido')
     .gte('created_at', periodo.inicio)
     .lt('created_at', periodo.fim);
@@ -254,6 +254,7 @@ async function gerarComissao(periodo) {
   var porVendedor = {};
   (data || []).forEach(function (p) {
     if (!p.vendedor_id || !p.profiles) return;
+    if (p.clientes && (p.clientes.eh_fornecedor || p.clientes.nao_contabilizar)) return; // não é venda de verdade
     // Sócios (admin/ADM1) às vezes ficam como vendedor_id em pedidos antigos —
     // essa tabela é só pra comissão de vendedor de verdade (Paulo etc).
     if (ROLES_VENDEDOR_FIN.indexOf(p.profiles.role) === -1) return;

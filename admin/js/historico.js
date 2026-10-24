@@ -155,7 +155,7 @@ async function contarOrcamentosPendentes(clienteId) {
   return count || 0;
 }
 
-async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
+async function loadHistoricoCliente(clienteId, containerId, onAtualizado, destacarNumero) {
   var conteudo = document.getElementById(containerId || 'historico-conteudo');
   conteudo.textContent = 'Carregando...';
 
@@ -235,7 +235,8 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
       botaoExcluir +
     '</div>';
 
-    return '<div style="border-bottom:1px solid var(--off-white); padding:14px 0;">' +
+    var destacado = destacarNumero != null && Number(pedido.numero) === Number(destacarNumero);
+    return '<div data-pedido-numero="' + pedido.numero + '" style="border-bottom:1px solid var(--off-white); padding:14px 8px;' + (destacado ? ' background:#fff7e0; border-left:4px solid #e0a800;' : '') + '">' +
       '<strong>' + tipoLabel + '</strong> <span class="badge ' + badgeClass + '">' + badgeText + '</span> ' + pagoBadge + nfBadge + ' — ' + dataStr +
       ' &nbsp; <span style="color:var(--gray-400);">' + formatarFormaPagamentoHistorico(pedido) + '</span>' +
       '<ul style="margin:8px 0 8px 20px; font-size:0.88rem;">' + itensVacuo + itensGerais + '</ul>' +
@@ -243,6 +244,9 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado) {
       acoes +
     '</div>';
   }).join('');
+
+  var blocoDestacado = destacarNumero != null ? conteudo.querySelector('[data-pedido-numero="' + destacarNumero + '"]') : null;
+  if (blocoDestacado && blocoDestacado.scrollIntoView) blocoDestacado.scrollIntoView({ block: 'center', behavior: 'smooth' });
 
   conteudo.querySelectorAll('[data-editar]').forEach(function (btn) {
     btn.addEventListener('click', function () {
