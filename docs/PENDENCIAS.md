@@ -2,7 +2,7 @@
 
 ## Em andamento
 1. **Domínio** – criar registros DNS no Registro.br e depois trocar URLs. Ver [DOMINIO.md](DOMINIO.md).
-2. **Pedidos** – apagar pedido de teste nº 28 (ALTISVAC) e corrigir pedido nº 51 (Thermoprint) para R$ 5.584,00
+2. **Pedidos** – script pronto em `sql/regularizar_pedidos_28_51.sql` (apaga pedido teste 28 e corrige o 51 para R$ 5.584,00). Executar no Supabase SQL Editor.
    (480 × 6,16 + 160 × 8,21 + 160 × 8,21; atualizar também a saída vinculada em `financeiro_saidas`
    e os textos de ICMS R$ 973,48 / IPI R$ 175,77). *Aprovado pelo usuário; aguardando execução no Supabase.*
 3. **Extrato Cora** – usuário envia o OFX (01/05–19/10/2026). Antes: apagar a saída errada do pedido 26
