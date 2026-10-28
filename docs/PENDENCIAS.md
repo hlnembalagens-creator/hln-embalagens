@@ -1,14 +1,21 @@
-# Pendências (atualizado em 26/10/2026)
+# Pendências (atualizado em 28/10/2026)
 
 ## Em andamento
-1. **Domínio** – criar registros DNS no Registro.br e depois trocar URLs. Ver [DOMINIO.md](DOMINIO.md).
-2. **Pedidos** – script pronto em `sql/regularizar_pedidos_28_51.sql` (apaga pedido teste 28 e corrige o 51 para R$ 5.584,00). Executar no Supabase SQL Editor.
-   (480 × 6,16 + 160 × 8,21 + 160 × 8,21; atualizar também a saída vinculada em `financeiro_saidas`
-   e os textos de ICMS R$ 973,48 / IPI R$ 175,77). *Aprovado pelo usuário; aguardando execução no Supabase.*
-3. **Extrato Cora** – usuário envia o OFX (01/05–19/10/2026). Antes: apagar a saída errada do pedido 26
-   (Americaes, R$ 378, "Fornecedor"). Depois importar em Financeiro > Importar extrato.
-   Decidir: Marina R$ 63, Casa de Carnes R$ 186; ignorar transferências próprias de R$ 406 e R$ 500;
-   pedidos 7, 11, 13, 17, 18, 19 sem lançamento no financeiro. Saldo final a conferir: **R$ 6.773,82**.
+1. **Domínio** – DNS do Registro.br já valendo na Vercel; falta o HTTPS emitir e trocar as URLs. Ver [DOMINIO.md](DOMINIO.md).
+2. **Financeiro – o que falta (usuário)**
+   - Apagar o lançamento duplicado "Pagamento DAS" (Administrativo, R$ 84, 30/06/2026); manter "Das" (Imposto):
+     `delete from financeiro_saidas where data='2026-06-30' and valor=84 and descricao='Pagamento DAS' and categoria='Administratico';`
+     (a confirmação de `delete` pelo conector do Supabase expira; rodar no SQL Editor ou apagar no CRM).
+   - Apagar a saída errada do pedido 26 (Americaes, R$ 378, "Fornecedor"); o pedido 26 já tem a entrada paga (R$ 379,00 em 30/09).
+   - Refazer no sistema e dar baixa nas vendas recebidas sem pedido: Massue/RA-CHU R$ 1.276,80 (13/07) e R$ 1.157,40 (21/07),
+     Dom Bosco R$ 1.008,60 (21/07), Marina R$ 63 (19/08), Casa de Carnes São Miguel R$ 186 (20/08), Heric R$ 378 (26/10, descobrir o cliente).
+   - Pedido 7 (RA-CHU, R$ 379,75): sem pagamento encontrado no extrato.
+   - Depois: conferir o saldo do Financeiro com o banco (Cora fecha em R$ 4.943,05 em 28/10).
+
+## Feito em 28/10/2026
+- Pedido 28 (teste) apagado e pedido 51 (Thermoprint) corrigido para R$ 5.584,00 (itens, saída, ICMS/IPI).
+- Baixas pelo extrato Cora (maio–out): pedidos 11, 13 (R$ 5.949,09 com 5% desc.), 17, 18, 19, 23 (R$ 379,51), 24, 26, 27, 32, 34 (R$ 385,81), 35, 37, 55.
+- Saídas lançadas do extrato (jul–out) e categorias "Contabilidade" e "Imposto" usadas; transferências próprias (R$ 406 e R$ 500) ignoradas.
 
 ## Aguardando terceiros
 - **Meta** aprovar o template `orcamento_pronto` (até lá a notificação por WhatsApp falha; o e-mail segue normal).
