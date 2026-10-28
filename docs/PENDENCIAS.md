@@ -13,6 +13,12 @@
 ## Aguardando terceiros
 - **Meta** aprovar o template `orcamento_pronto` (até lá a notificação por WhatsApp falha; o e-mail segue normal).
 
+## Roteiro (ordem combinada em 28/10/2026)
+1. Finalizar o site no domínio novo (aguardando emissão do HTTPS).
+2. E-mail (contato@, nfe@).
+3. **Meta Business Suite:** configurar e conferir tudo (WhatsApp Business, WABA, template `orcamento_pronto`, página/Instagram, permissões).
+4. **Google Ads:** conversão por WhatsApp/formulário e Search Console.
+
 ## Depois da migração do site
 - **E-mail** (contato@, nfe@) – ver [EMAIL.md](EMAIL.md).
 - Rever/refazer pedidos antigos (alguns só impressos, sem salvar) e marcar "Com NF" conforme emissor.
