@@ -6,7 +6,7 @@
 var SUPABASE_URL = 'https://tuuwszzjxxqjgfyncnhn.supabase.co';
 var REMETENTE = 'HLN Embalagens e Equipamentos <naoresponda@hopvest.com.br>';
 var SYNTHETIC_DOMAIN = '@hln.internal';
-var REDIRECT_TO = 'https://hln-embalagens.vercel.app/admin/trocar-senha.html';
+var REDIRECT_TO = 'https://crm.hlnembalagens.com.br/admin/trocar-senha.html';
 
 function usernameToEmail(username) {
   return username.trim().toLowerCase().replace(/\s+/g, '.') + SYNTHETIC_DOMAIN;

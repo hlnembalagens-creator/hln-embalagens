@@ -8,7 +8,7 @@ var HLN_CONFIG = {
   email: 'hlnembalagens@gmail.com',
 
   // Usando a URL do Vercel enquanto o domínio próprio não é registrado/apontado.
-  siteUrl: 'https://hln-embalagens.vercel.app',
+  siteUrl: 'https://www.hlnembalagens.com.br',
 
   // Mensagem única pré-preenchida em TODOS os botões de WhatsApp do site.
   whatsappDefaultMessage: 'Olá! Vim pelo site da HLN e gostaria de um orçamento.',

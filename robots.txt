@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin/
 
-Sitemap: https://hln-embalagens.vercel.app/sitemap.xml
+Sitemap: https://www.hlnembalagens.com.br/sitemap.xml
