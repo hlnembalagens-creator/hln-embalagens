@@ -7,7 +7,19 @@
       "permanent": false
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/admin/:path*",
+      "has": [{ "type": "host", "value": "hln-embalagens.vercel.app" }],
+      "destination": "https://crm.hlnembalagens.com.br/admin/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/admin/:path*",
+      "has": [{ "type": "host", "value": "www.hlnembalagens.com.br" }],
+      "destination": "https://crm.hlnembalagens.com.br/admin/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/((?!api/|admin/).*)",
       "has": [{ "type": "host", "value": "hln-embalagens.vercel.app" }],
       "destination": "https://www.hlnembalagens.com.br/$1",
       "permanent": true
