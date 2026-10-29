@@ -5,7 +5,7 @@ var HLN_CONFIG = {
 
   phoneDisplay: '(19) 98333-2661',
 
-  email: 'hlnembalagens@gmail.com',
+  email: 'contato@hlnembalagens.com.br',
 
   // Usando a URL do Vercel enquanto o domínio próprio não é registrado/apontado.
   siteUrl: 'https://www.hlnembalagens.com.br',
