@@ -20,11 +20,15 @@
 ## Aguardando terceiros
 - **Meta** aprovar o template `orcamento_pronto` (até lá a notificação por WhatsApp falha; o e-mail segue normal).
 
-## Roteiro (ordem combinada em 28/10/2026)
-1. Finalizar o site no domínio novo (aguardando emissão do HTTPS).
-2. E-mail (contato@, nfe@).
-3. **Meta Business Suite:** configurar e conferir tudo (WhatsApp Business, WABA, template `orcamento_pronto`, página/Instagram, permissões).
-4. **Google Ads:** conversão por WhatsApp/formulário e Search Console.
+## Roteiro (ordem combinada em 28-29/10/2026)
+1. Site no domínio novo: **publicado** em 29/10 (commit 988225d). Falta o usuário ajustar o Supabase
+   (Authentication > URL Configuration: Site URL `https://www.hlnembalagens.com.br`; Redirect URLs
+   `https://crm.hlnembalagens.com.br/**` e `https://www.hlnembalagens.com.br/**`) e o `apiUrl` do
+   `scripts/importar-nfe.config.json` local.
+2. E-mail Locaweb (`contato@`, `nfe@`): feito **na nuvem**, com prints do painel da Locaweb e do Registro.br.
+3. **Meta Business Suite** e 4. **Google Ads**: feitos em **sessão local** (PC do usuário, com a extensão do Chrome).
+   Meta: WhatsApp Business, WABA, template `orcamento_pronto`, página/Instagram, permissões.
+   Google Ads: conversão por WhatsApp/formulário e Search Console.
 
 ## Depois da migração do site
 - **E-mail** (contato@, nfe@) – ver [EMAIL.md](EMAIL.md).
