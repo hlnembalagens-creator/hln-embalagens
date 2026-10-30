@@ -257,12 +257,8 @@
       <a href="#" class="btn btn-primary btn-block" data-wa-link target="_blank" rel="noopener">Chamar no WhatsApp agora</a>
     </div>
 
-    <form class="contact-form" id="contact-form" action="https://formsubmit.co/contato@hlnembalagens.com.br" method="POST">
-      <input type="hidden" name="_subject" value="Novo contato pelo site HLN Embalagens">
-      <input type="hidden" name="_template" value="table">
-      <input type="hidden" name="_captcha" value="false">
-      <input type="hidden" name="_next" value="obrigado.html">
-      <!-- honeypot anti-spam: campo invisível para humanos, se preenchido o FormSubmit descarta o envio -->
+    <form class="contact-form" id="contact-form" action="/api/contato" method="POST">
+      <!-- honeypot anti-spam: campo invisível para humanos, se preenchido o servidor descarta o envio -->
       <input type="text" name="_honey" style="display:none">
 
       <label for="name">Nome</label>
