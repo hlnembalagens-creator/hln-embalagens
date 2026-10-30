@@ -20,15 +20,21 @@
 ## Aguardando terceiros
 - **Meta** aprovar o template `orcamento_pronto` (até lá a notificação por WhatsApp falha; o e-mail segue normal).
 
-## Roteiro (ordem combinada em 28-29/10/2026)
-1. Site no domínio novo: **publicado** em 29/10 (commit 988225d). Falta o usuário ajustar o Supabase
-   (Authentication > URL Configuration: Site URL `https://www.hlnembalagens.com.br`; Redirect URLs
-   `https://crm.hlnembalagens.com.br/**` e `https://www.hlnembalagens.com.br/**`) e o `apiUrl` do
-   `scripts/importar-nfe.config.json` local.
-2. E-mail Locaweb (`contato@`, `nfe@`): feito **na nuvem**, com prints do painel da Locaweb e do Registro.br.
-3. **Meta Business Suite** e 4. **Google Ads**: feitos em **sessão local** (PC do usuário, com a extensão do Chrome).
-   Meta: WhatsApp Business, WABA, template `orcamento_pronto`, página/Instagram, permissões.
-   Google Ads: conversão por WhatsApp/formulário e Search Console.
+## Roteiro (atualizado em 30/10/2026)
+1. **Site no domínio novo:** publicado. Formulário de contato agora usa `api/contato.js` (Resend), no lugar do FormSubmit
+   (que ficou fora do ar, erro 521). Testar com aba anônima e conferir que chega no `contato@`.
+2. **Supabase (usuário):** Authentication > URL Configuration: Site URL `https://www.hlnembalagens.com.br`;
+   Redirect URLs `https://crm.hlnembalagens.com.br/**` e `https://www.hlnembalagens.com.br/**`.
+   Também trocar o `apiUrl` do `scripts/importar-nfe.config.json` local para o domínio novo.
+3. **E-mail Locaweb:** `contato@` e `nfe@` criados e testados (receber e enviar OK). DNS: MX, SPF, DMARC, TXT de verificação e CNAMEs.
+   Falta: SRV autodiscover (opcional, se o Registro.br aceitar) e a leitura automática do `nfe@` por IMAP
+   (precisa servidor/porta do painel; a senha vai só como variável de ambiente na Vercel).
+4. **Resend para o domínio da HLN (fazer antes do Google Ads):** conta nova com `contato@`, adicionar o domínio, criar
+   DKIM/SPF do subdomínio `send` no Registro.br, trocar `RESEND_API_KEY` na Vercel e o `REMETENTE`
+   (`api/enviar-orcamento.js`, `api/esqueci-senha.js`, `api/contato.js`) para `@hlnembalagens.com.br`.
+   Hoje remetente é `orcamento@hopvest.com.br`; formulário, orçamentos e recuperação de senha dependem dessa conta.
+5. **Visual do site:** fotos reais dos produtos, prova social, layout e auditoria Lighthouse; fazer em branch separada.
+6. **Meta Business Suite** e 7. **Google Ads:** em **sessão local** (PC do usuário, com a extensão do Chrome).
 
 ## Depois da migração do site
 - **E-mail** (contato@, nfe@) – ver [EMAIL.md](EMAIL.md).
