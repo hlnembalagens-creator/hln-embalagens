@@ -1,0 +1,10 @@
+{
+  "name": "hln-embalagens",
+  "private": true,
+  "description": "Portal HLN: site estático + CRM em /admin + funções em /api (Vercel)",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "imapflow": "2.10.0",
+    "mailparser": "3.14.1"
+  }
+}

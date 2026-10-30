@@ -2,27 +2,58 @@
   "redirects": [
     {
       "source": "/",
-      "has": [{ "type": "host", "value": "crm.hlnembalagens.com.br" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "crm.hlnembalagens.com.br"
+        }
+      ],
       "destination": "/admin/login.html",
       "permanent": false
     },
     {
       "source": "/admin/:path*",
-      "has": [{ "type": "host", "value": "hln-embalagens.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "hln-embalagens.vercel.app"
+        }
+      ],
       "destination": "https://crm.hlnembalagens.com.br/admin/:path*",
       "permanent": true
     },
     {
       "source": "/admin/:path*",
-      "has": [{ "type": "host", "value": "www.hlnembalagens.com.br" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "www.hlnembalagens.com.br"
+        }
+      ],
       "destination": "https://crm.hlnembalagens.com.br/admin/:path*",
       "permanent": true
     },
     {
       "source": "/((?!api/|admin/).*)",
-      "has": [{ "type": "host", "value": "hln-embalagens.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "hln-embalagens.vercel.app"
+        }
+      ],
       "destination": "https://www.hlnembalagens.com.br/$1",
       "permanent": true
     }
-  ]
+  ],
+  "crons": [
+    {
+      "path": "/api/nfe-email",
+      "schedule": "0 11 * * *"
+    }
+  ],
+  "functions": {
+    "api/nfe-email.js": {
+      "maxDuration": 60
+    }
+  }
 }

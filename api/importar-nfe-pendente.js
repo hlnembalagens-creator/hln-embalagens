@@ -6,9 +6,7 @@
 // (NFE_IMPORT_SECRET), não por login — quem chama é um script local, não um
 // usuário logado no navegador.
 
-var SUPABASE_URL = 'https://tuuwszzjxxqjgfyncnhn.supabase.co';
-
-var extrairDadosDocumento = require('./_lib/ler-documento').extrairDadosDocumento;
+var salvarPendente = require('./_lib/salvar-pendente').salvarPendente;
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -28,37 +26,15 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    res.status(500).json({ error: 'SUPABASE_SERVICE_ROLE_KEY ausente no servidor.' });
+  var r = await salvarPendente(body.nomeArquivo, body.pdfBase64);
+
+  if (!r.gravou) {
+    res.status(r.error && r.error.indexOf('SUPABASE_SERVICE_ROLE_KEY') === 0 ? 500 : 502).json({ error: r.error });
     return;
   }
 
-  var resultado = await extrairDadosDocumento(body.pdfBase64);
-  var serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  var linha = resultado.ok
-    ? { nome_arquivo: body.nomeArquivo, dados: resultado.dados, status: 'pendente' }
-    : { nome_arquivo: body.nomeArquivo, dados: {}, status: 'erro', erro: resultado.error };
-
-  var insertResp = await fetch(SUPABASE_URL + '/rest/v1/estoque_importacoes_pendentes', {
-    method: 'POST',
-    headers: {
-      apikey: serviceKey,
-      Authorization: 'Bearer ' + serviceKey,
-      'Content-Type': 'application/json',
-      Prefer: 'return=minimal'
-    },
-    body: JSON.stringify(linha)
-  });
-
-  if (!insertResp.ok) {
-    var erroTexto = await insertResp.text().catch(function () { return ''; });
-    res.status(502).json({ error: 'Falha ao gravar pendente no banco: ' + erroTexto });
-    return;
-  }
-
-  if (!resultado.ok) {
-    res.status(200).json({ ok: false, error: resultado.error });
+  if (!r.ok) {
+    res.status(200).json({ ok: false, error: r.error });
     return;
   }
 
