@@ -1,9 +1,8 @@
 # Pendências (atualizado em 01/11/2026)
 
 ## Agora
-1. **Leitura automática do `nfe@`** (`api/nfe-email.js`, Vercel Cron 08:00 BRT): variáveis cadastradas e redeploy feito.
-   Falta testar: mandar PDF de NF para `nfe@`, rodar em Vercel > Settings > Cron Jobs > Run, conferir a fila em Estoque
-   e a pasta "Processados" da caixa.
+1. **Leitura automática do `nfe@`:** funcionando (testada em 02/11 às 08:00: o PDF `2145.pdf` da Capital Etiquetas apareceu na fila
+   de pendentes do Estoque). Lê PDFs da caixa `nfe@` uma vez por dia e move o e-mail para a pasta "Processados".
 2. **Supabase:** Site URL e Redirect URLs configurados e **"Esqueci a senha" testado com sucesso** (01/11). Falta só trocar o `apiUrl` do
    `scripts/importar-nfe.config.json` local para o domínio novo.
 3. **Financeiro (usuário):**
