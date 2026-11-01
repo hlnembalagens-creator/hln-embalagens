@@ -25,7 +25,7 @@
 6. **Visual do site:** fotos reais dos produtos, prova social, layout e auditoria Lighthouse (branch separada).
 7. **Meta Business Suite** (WhatsApp Business, WABA, template `orcamento_pronto`, página/Instagram, permissões) e 8. **Google Ads**
    (conversão WhatsApp/formulário, Search Console): em **sessão local** (PC do usuário, com a extensão do Chrome).
-9. **Migrar Vercel e Supabase** para as contas da HLN e **apagar projetos antigos na QuboTech** (ver [CONTAS.md](CONTAS.md)).
+9. **Apagar projetos antigos nas contas QuboTech** (Vercel e Supabase da HLN já estão na conta da HLN; ver [CONTAS.md](CONTAS.md)).
 
 ## Aguardando terceiros
 - **Meta** aprovar o template `orcamento_pronto` (até lá a notificação por WhatsApp falha; o e-mail segue normal).
