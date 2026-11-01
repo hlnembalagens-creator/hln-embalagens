@@ -22,7 +22,7 @@
 5. **Resend para o domínio da HLN (antes do Google Ads):** conta nova com `contato@`, adicionar o domínio, DKIM/SPF do subdomínio `send`
    no Registro.br, trocar `RESEND_API_KEY` na Vercel e o `REMETENTE` em `api/enviar-orcamento.js`, `api/esqueci-senha.js`, `api/contato.js`
    (hoje `orcamento@hopvest.com.br`; formulário, orçamentos e recuperação de senha dependem dessa conta).
-6. **Visual do site:** fotos reais dos produtos, prova social, layout e auditoria Lighthouse (branch separada).
+6. **Visual do site (adiado por ora):** fotos reais dos produtos, prova social, layout e auditoria Lighthouse (branch separada).
 7. **Meta Business Suite** (WhatsApp Business, WABA, template `orcamento_pronto`, página/Instagram, permissões) e 8. **Google Ads**
    (conversão WhatsApp/formulário, Search Console): em **sessão local** (PC do usuário, com a extensão do Chrome).
 9. **Apagar projetos antigos nas contas QuboTech** (Vercel e Supabase da HLN já estão na conta da HLN; ver [CONTAS.md](CONTAS.md)).
