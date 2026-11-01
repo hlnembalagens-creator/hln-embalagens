@@ -32,7 +32,7 @@
 ## Opcional
 - Registros SRV `_autodiscover._tcp` e CNAMEs `pop`, `imap`, `smtp`, `mail`, `webmail`, `calendario` no Registro.br
   (só para configurar o e-mail em celular/Outlook; o servidor IMAP é `email-ssl.com.br`, porta 993).
-- Corrigir `function_search_path_mutable` em `resequenciar_codigos_produtos` e ligar proteção contra senhas vazadas no Supabase Auth.
+- Ligar a proteção contra senhas vazadas no Supabase Auth (Authentication > Password security). O aviso da função `resequenciar_codigos_produtos` foi corrigido em 01/11.
 
 ## Feito
 - Pedidos 28 (apagado) e 51 (R$ 5.584,00); baixas e saídas conciliadas com o extrato da Cora (maio–out); DAS e demais saídas lançadas.
