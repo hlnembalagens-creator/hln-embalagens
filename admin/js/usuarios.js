@@ -1,4 +1,11 @@
 var allUsuarios = [];
+var usuarioLogadoId = null;
+
+function esc(texto) {
+  return String(texto == null ? '' : texto).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
 
 var ROLE_LABELS = {
   admin: 'Administrador', admin1: 'ADM 1',
@@ -30,25 +37,33 @@ async function loadUsuarios() {
 function renderUsuariosTable() {
   var tbody = document.getElementById('usuarios-tbody');
   if (!allUsuarios.length) {
-    tbody.innerHTML = '<tr><td colspan="5">Nenhum usuário cadastrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6">Nenhum usuário cadastrado.</td></tr>';
     return;
   }
 
   tbody.innerHTML = allUsuarios.map(function (u) {
-    var pendente = u.must_change_password
-      ? '<span class="badge badge-warning">Pendente</span>'
-      : '<span class="badge badge-ok">Ok</span>';
+    var inativo = u.ativo === false;
+    var status = inativo
+      ? '<span class="badge badge-warning">Desativado</span>'
+      : (u.must_change_password ? '<span class="badge badge-warning">Troca de senha pendente</span>' : '<span class="badge badge-ok">Ativo</span>');
 
     var opcoesRole = Object.keys(ROLE_LABELS).filter(function (r) { return r !== 'vendedor'; }).map(function (r) {
       return '<option value="' + r + '"' + (u.role === r ? ' selected' : '') + '>' + ROLE_LABELS[r] + '</option>';
     }).join('');
 
-    return '<tr>' +
-      '<td>' + u.nome_exibicao + '</td>' +
-      '<td>' + u.nome_usuario + '</td>' +
+    var ehEu = u.id === usuarioLogadoId;
+    var botoes = '<button data-editar="' + u.id + '">Editar</button> ' +
+      '<button data-resetar="' + u.id + '">Resetar senha</button>' +
+      (ehEu ? '' : ' <button data-ativo="' + u.id + '">' + (inativo ? 'Reativar' : 'Desativar') + '</button>' +
+        ' <button data-excluir="' + u.id + '" style="color:#b3261e;">Excluir</button>');
+
+    return '<tr' + (inativo ? ' style="opacity:0.6;"' : '') + '>' +
+      '<td>' + esc(u.nome_exibicao) + (ehEu ? ' <small>(você)</small>' : '') + '</td>' +
+      '<td>' + esc(u.nome_usuario) + '</td>' +
+      '<td>' + esc(u.email || '—') + '</td>' +
       '<td><select data-role-select="' + u.id + '" style="padding:6px 8px; border-radius:6px; border:1px solid #d7ddea;">' + opcoesRole + '</select></td>' +
-      '<td>' + pendente + '</td>' +
-      '<td class="row-actions"><button data-resetar="' + u.id + '">Resetar senha</button></td>' +
+      '<td>' + status + '</td>' +
+      '<td class="row-actions">' + botoes + '</td>' +
     '</tr>';
   }).join('');
 
@@ -57,6 +72,53 @@ function renderUsuariosTable() {
       try {
         await chamarGerenciarUsuario({ acao: 'mudar_role', userId: select.dataset.roleSelect, role: select.value });
         showToast('Perfil atualizado.', 'ok');
+        loadUsuarios();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
+
+  tbody.querySelectorAll('[data-editar]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var usuario = allUsuarios.find(function (u) { return u.id === btn.dataset.editar; });
+      if (!usuario) return;
+      usuarioEmEdicao = usuario;
+      document.getElementById('editar-nome-exibicao').value = usuario.nome_exibicao || '';
+      document.getElementById('editar-nome-usuario').value = usuario.nome_usuario || '';
+      document.getElementById('editar-email').value = usuario.email || '';
+      document.getElementById('editar-error').style.display = 'none';
+      document.getElementById('modal-editar-usuario').classList.add('open');
+    });
+  });
+
+  tbody.querySelectorAll('[data-ativo]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var usuario = allUsuarios.find(function (u) { return u.id === btn.dataset.ativo; });
+      if (!usuario) return;
+      var desativar = usuario.ativo !== false;
+      var msg = desativar
+        ? 'Desativar ' + usuario.nome_exibicao + '? A pessoa deixa de conseguir entrar, mas o histórico continua.'
+        : 'Reativar ' + usuario.nome_exibicao + '?';
+      if (!window.confirm(msg)) return;
+      try {
+        await chamarGerenciarUsuario({ acao: desativar ? 'desativar' : 'reativar', userId: usuario.id });
+        showToast(desativar ? 'Usuário desativado.' : 'Usuário reativado.', 'ok');
+        loadUsuarios();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  });
+
+  tbody.querySelectorAll('[data-excluir]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var usuario = allUsuarios.find(function (u) { return u.id === btn.dataset.excluir; });
+      if (!usuario) return;
+      if (!window.confirm('Excluir ' + usuario.nome_exibicao + ' (' + usuario.nome_usuario + ') de vez? Isso não pode ser desfeito.')) return;
+      try {
+        await chamarGerenciarUsuario({ acao: 'excluir', userId: usuario.id });
+        showToast('Usuário excluído.', 'ok');
         loadUsuarios();
       } catch (err) {
         showToast(err.message, 'error');
@@ -76,6 +138,45 @@ function renderUsuariosTable() {
     });
   });
 }
+
+/* ===================== EDITAR USUÁRIO ===================== */
+
+var usuarioEmEdicao = null;
+
+document.getElementById('editar-cancelar').addEventListener('click', function () {
+  document.getElementById('modal-editar-usuario').classList.remove('open');
+  usuarioEmEdicao = null;
+});
+
+document.getElementById('editar-confirmar').addEventListener('click', async function () {
+  if (!usuarioEmEdicao) return;
+  var errorEl = document.getElementById('editar-error');
+  errorEl.style.display = 'none';
+
+  var btn = this;
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+
+  try {
+    await chamarGerenciarUsuario({
+      acao: 'editar',
+      userId: usuarioEmEdicao.id,
+      nomeExibicao: document.getElementById('editar-nome-exibicao').value.trim(),
+      nomeUsuario: document.getElementById('editar-nome-usuario').value.trim(),
+      email: document.getElementById('editar-email').value.trim()
+    });
+    showToast('Usuário atualizado.', 'ok');
+    document.getElementById('modal-editar-usuario').classList.remove('open');
+    usuarioEmEdicao = null;
+    loadUsuarios();
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Salvar';
+  }
+});
 
 /* ===================== RESETAR SENHA ===================== */
 
@@ -156,5 +257,6 @@ document.getElementById('usuario-form').addEventListener('submit', async functio
 (async function () {
   var auth = await window.ADMIN_AUTH_READY;
   if (!auth) return;
+  usuarioLogadoId = auth.session.user.id;
   loadUsuarios();
 })();

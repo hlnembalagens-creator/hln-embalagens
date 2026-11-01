@@ -80,8 +80,8 @@
     <h2>Usuários cadastrados</h2>
     <div class="table-scroll">
       <table class="admin-table">
-        <thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Troca senha pendente</th><th></th></tr></thead>
-        <tbody id="usuarios-tbody"><tr><td colspan="5">Carregando...</td></tr></tbody>
+        <thead><tr><th>Nome</th><th>Login</th><th>E-mail pessoal</th><th>Perfil</th><th>Status</th><th></th></tr></thead>
+        <tbody id="usuarios-tbody"><tr><td colspan="6">Carregando...</td></tr></tbody>
       </table>
     </div>
   </div>
@@ -100,6 +100,31 @@
     <div class="form-actions">
       <button type="button" class="btn btn-primary" id="resetar-confirmar">Resetar</button>
       <button type="button" class="btn btn-outline" id="resetar-cancelar">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR USUÁRIO -->
+<div class="modal-overlay" id="modal-editar-usuario">
+  <div class="modal-box" style="max-width:460px;">
+    <h3>Editar usuário</h3>
+    <div class="form-field" style="margin-bottom:12px;">
+      <label for="editar-nome-exibicao">Nome de exibição *</label>
+      <input type="text" id="editar-nome-exibicao">
+    </div>
+    <div class="form-field" style="margin-bottom:12px;">
+      <label for="editar-nome-usuario">Usuário (login) *</label>
+      <input type="text" id="editar-nome-usuario">
+      <span class="hint">Letras minúsculas sem acento, números, ponto, hífen. Se mudar, a pessoa passa a entrar com o novo login.</span>
+    </div>
+    <div class="form-field" style="margin-bottom:16px;">
+      <label for="editar-email">E-mail pessoal</label>
+      <input type="email" id="editar-email">
+    </div>
+    <p id="editar-error" class="error-message" style="display:none;"></p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" id="editar-confirmar">Salvar</button>
+      <button type="button" class="btn btn-outline" id="editar-cancelar">Cancelar</button>
     </div>
   </div>
 </div>

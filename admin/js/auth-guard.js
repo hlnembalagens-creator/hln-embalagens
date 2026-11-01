@@ -27,6 +27,12 @@ window.ADMIN_AUTH_READY = (async function () {
     return new Promise(function () {});
   }
 
+  if (profile.ativo === false) {
+    await supabaseClient.auth.signOut();
+    location.replace('login.html');
+    return new Promise(function () {});
+  }
+
   if (profile.must_change_password && CURRENT_PAGE !== 'trocar-senha') {
     location.replace('trocar-senha.html');
     return new Promise(function () {});

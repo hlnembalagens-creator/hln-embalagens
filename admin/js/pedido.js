@@ -119,14 +119,14 @@ async function loadVendedoresSelect() {
   var select = document.getElementById('vendedor_responsavel');
   if (!select) return;
 
-  var { data, error } = await supabaseClient.from('profiles').select('id, nome_exibicao, role').order('nome_exibicao');
+  var { data, error } = await supabaseClient.from('profiles').select('id, nome_exibicao, role, ativo').order('nome_exibicao');
   if (error) return;
   vendedoresCache = data || [];
 
   // Só entra quem realmente é vendedor (Ext/Int) — sócios (admin/ADM1) não
   // aparecem aqui, essa lista é só pra creditar a venda a um vendedor de verdade.
   select.innerHTML = '<option value="">— Eu mesmo —</option>' + vendedoresCache
-    .filter(function (p) { return p.id !== currentUserId && ROLES_VENDEDOR.indexOf(p.role) !== -1; })
+    .filter(function (p) { return p.id !== currentUserId && p.ativo !== false && ROLES_VENDEDOR.indexOf(p.role) !== -1; })
     .map(function (p) { return '<option value="' + p.id + '">' + p.nome_exibicao + '</option>'; })
     .join('');
 }
