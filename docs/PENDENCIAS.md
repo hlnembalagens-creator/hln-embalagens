@@ -4,9 +4,9 @@
 1. **Leitura automática do `nfe@`** (`api/nfe-email.js`, Vercel Cron 08:00 BRT): variáveis cadastradas e redeploy feito.
    Falta testar: mandar PDF de NF para `nfe@`, rodar em Vercel > Settings > Cron Jobs > Run, conferir a fila em Estoque
    e a pasta "Processados" da caixa.
-2. **Supabase (usuário):** Authentication > URL Configuration: Site URL `https://www.hlnembalagens.com.br`;
-   Redirect URLs `https://crm.hlnembalagens.com.br/**` e `https://www.hlnembalagens.com.br/**`
-   (sem isso o "esqueci a senha" falha). Trocar também o `apiUrl` do `scripts/importar-nfe.config.json` local.
+2. **Supabase:** Site URL e Redirect URLs já configurados (01/11). Falta só testar uma recuperação de senha de ponta a ponta
+   (e-mail chega, link abre `crm.hlnembalagens.com.br/admin/trocar-senha.html`). Trocar também o `apiUrl` do
+   `scripts/importar-nfe.config.json` local.
 3. **Financeiro (usuário):**
    - Apagar o "Pagamento DAS" duplicado (Administrativo, R$ 84, 30/06/2026); manter "Das" (Imposto):
      `delete from financeiro_saidas where data='2026-06-30' and valor=84 and descricao='Pagamento DAS' and categoria='Administratico';`
