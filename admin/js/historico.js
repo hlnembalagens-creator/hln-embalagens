@@ -213,10 +213,15 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado, destac
     }
 
     var nfBadge = pedido.tipo === 'pedido'
-      ? (pedido.nf_emitida ? ' <span class="badge badge-ok">Com NF' + (pedido.nf_numero ? ' nº ' + pedido.nf_numero : '') + '</span>' : ' <span class="badge badge-warning">Sem NF</span>')
+      ? (pedido.nf_emitida
+        ? ' <span class="badge badge-ok">Com NF' + (pedido.nf_numero ? ' nº ' + pedido.nf_numero : '') + '</span>'
+        : (pedido.nf_dispensada
+          ? ' <span class="badge" style="background:#e9edf5; color:#4a5875;">Sem NF necessária</span>'
+          : ' <span class="badge badge-warning">Sem NF</span>'))
       : '';
     var botaoNf = pedido.tipo === 'pedido'
-      ? '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" data-alternar-nf="' + pedido.id + '">' + (pedido.nf_emitida ? 'Marcar sem NF' : 'Marcar com NF') + '</button>'
+      ? '<button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" data-alternar-nf="' + pedido.id + '">' + (pedido.nf_emitida ? 'Marcar sem NF' : 'Marcar com NF') + '</button>' +
+        (pedido.nf_emitida ? '' : ' <button type="button" class="btn btn-outline" style="padding:6px 12px; font-size:0.78rem;" data-alternar-dispensa="' + pedido.id + '">' + (pedido.nf_dispensada ? 'Exigir NF' : 'Sem NF necessária') + '</button>')
       : '';
 
     var botaoExcluir = currentUserRole !== 'admin1'
@@ -291,7 +296,18 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado, destac
         if (resp === null) return;
         numero = resp.trim() || null;
       }
-      var { error } = await supabaseClient.from('pedidos').update({ nf_emitida: marcar, nf_numero: marcar ? numero : null }).eq('id', pedido.id);
+      var { error } = await supabaseClient.from('pedidos').update({ nf_emitida: marcar, nf_numero: marcar ? numero : null, nf_dispensada: marcar ? false : !!pedido.nf_dispensada }).eq('id', pedido.id);
+      if (error) { alert('Erro: ' + error.message); return; }
+      loadHistoricoCliente(clienteId, containerId, onAtualizado);
+      if (typeof onAtualizado === 'function') onAtualizado();
+    });
+  });
+
+  conteudo.querySelectorAll('[data-alternar-dispensa]').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      var pedido = data.find(function (p) { return p.id === btn.dataset.alternarDispensa; });
+      if (!pedido) return;
+      var { error } = await supabaseClient.from('pedidos').update({ nf_dispensada: !pedido.nf_dispensada }).eq('id', pedido.id);
       if (error) { alert('Erro: ' + error.message); return; }
       loadHistoricoCliente(clienteId, containerId, onAtualizado);
       if (typeof onAtualizado === 'function') onAtualizado();

@@ -55,7 +55,7 @@ function descricaoPeriodo() {
 async function buscarPedidosDashboard() {
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('id, numero, cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, nf_emitida, nf_numero, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor, nao_contabilizar)')
+    .select('id, numero, cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, nf_emitida, nf_numero, nf_dispensada, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor, nao_contabilizar)')
     .eq('tipo', 'pedido')
     .order('created_at', { ascending: false });
 
@@ -183,6 +183,9 @@ function renderMei() {
   document.getElementById('mei-total-sub').textContent = doAno.length + ' pedido(s) — por data da venda';
   document.getElementById('mei-com-nf').textContent = formatBRLDash(comNf);
   document.getElementById('mei-sem-nf').textContent = formatBRLDash(total - comNf);
+  var dispensadas = somaValor(doAno.filter(function (p) { return !p.nf_emitida && p.nf_dispensada; }));
+  var subSemNf = document.getElementById('mei-sem-nf-sub');
+  if (subSemNf) subSemNf.textContent = dispensadas > 0 ? 'inclui ' + formatBRLDash(dispensadas) + ' marcados como "sem NF necessária"' : '';
 
   var barra = document.getElementById('mei-barra');
   var texto = document.getElementById('mei-limite-texto');
@@ -211,17 +214,20 @@ function renderConferencia() {
     return '<tr><td>' + p.numero + '</td><td>' + formatDataDash(p.created_at) + '</td><td>' + nome + '</td>' +
       '<td>' + formatBRLDash(p.valor_total_a_pagar) + '</td>' +
       '<td>' + (p.pago ? '<span class="badge badge-ok">Pago</span>' : '<span class="badge badge-warning">Pendente</span>') + '</td>' +
-      '<td><input type="checkbox" data-nf="' + p.id + '"' + (p.nf_emitida ? ' checked' : '') + (podeMarcarNf ? '' : ' disabled') + ' title="Marcar se essa venda teve nota fiscal"></td></tr>';
+      '<td><input type="checkbox" data-nf="' + p.id + '"' + (p.nf_emitida ? ' checked' : '') + (podeMarcarNf ? '' : ' disabled') + ' title="Marcar se essa venda teve nota fiscal">' +
+      (!p.nf_emitida && p.nf_dispensada ? ' <small style="color:var(--gray-400);">sem NF necessária</small>' : '') + '</td></tr>';
   }).join('');
 
   tbody.querySelectorAll('[data-nf]').forEach(function (chk) {
     chk.addEventListener('change', async function () {
       var pedido = todosPedidos.find(function (p) { return p.id === chk.dataset.nf; });
       if (!pedido) return;
-      var { error } = await supabaseClient.from('pedidos').update({ nf_emitida: chk.checked, nf_numero: chk.checked ? pedido.nf_numero : null }).eq('id', pedido.id);
+      var { error } = await supabaseClient.from('pedidos').update({ nf_emitida: chk.checked, nf_numero: chk.checked ? pedido.nf_numero : null, nf_dispensada: chk.checked ? false : !!pedido.nf_dispensada }).eq('id', pedido.id);
       if (error) { chk.checked = !chk.checked; alert('Erro ao salvar: ' + error.message); return; }
       pedido.nf_emitida = chk.checked;
+      if (chk.checked) pedido.nf_dispensada = false;
       renderMei();
+      renderConferencia();
     });
   });
 }
