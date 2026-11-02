@@ -204,12 +204,8 @@ async function loadProdutosEstoque() {
 }
 
 document.getElementById('estoque-search').addEventListener('input', function (e) {
-  var term = e.target.value.toLowerCase();
-  var filtered = allProdutosEstoque.filter(function (p) {
-    return (p.nome_produto || '').toLowerCase().includes(term) ||
-      (p.codigo_produto || '').toLowerCase().includes(term);
-  });
-  renderEstoqueTable(filtered);
+  var term = e.target.value;
+  renderEstoqueTable(allProdutosEstoque.filter(function (p) { return produtoCombinaBusca(p, term); }));
 });
 
 /* ===================== PRODUTO: NOVO / EDITAR (admin) ===================== */

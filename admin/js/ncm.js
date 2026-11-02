@@ -12,15 +12,16 @@ var NCM_TIPOS = [
 ];
 
 var ncmTabelaPromise = null;
-var ncmRegras = {}; // { nylon_poli: '3923.29.90', ... }
+var ncmRegras = {}; // { nylon_poli: '39232990', ... }
 
 function ncmSoDigitos(valor) {
   return String(valor || '').replace(/\D/g, '');
 }
 
+// O NCM é guardado e exibido só com os 8 dígitos, sem pontos (formato que o Emissor aceita).
 function ncmFormatar(valor) {
   var d = ncmSoDigitos(valor);
-  return d.length === 8 ? d.slice(0, 4) + '.' + d.slice(4, 6) + '.' + d.slice(6) : String(valor || '').trim();
+  return d.length === 8 ? d : String(valor || '').trim();
 }
 
 function carregarTabelaNcm() {

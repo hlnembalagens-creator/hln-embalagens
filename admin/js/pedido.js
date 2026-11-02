@@ -360,30 +360,47 @@ document.getElementById('btn-open-selecionar-vacuo').addEventListener('click', a
 });
 document.getElementById('selecionar-vacuo-btn-cancelar').addEventListener('click', closeSelecionarVacuoModal);
 
+var produtosVacuoDaCategoria = [];
+
+// Monta as opções da medida, filtradas pelo que foi digitado na busca (ex: 20x25x120).
+function renderOpcoesVacuo() {
+  var produtoSelect = document.getElementById('select-vacuo-produto');
+  var termo = document.getElementById('select-vacuo-busca').value;
+  var visiveis = produtosVacuoDaCategoria.filter(function (p) { return produtoCombinaBusca(p, termo); });
+
+  if (!produtosVacuoDaCategoria.length) {
+    produtoSelect.innerHTML = '<option value="">Nenhuma medida cadastrada nessa categoria</option>';
+  } else if (!visiveis.length) {
+    produtoSelect.innerHTML = '<option value="">Nenhuma medida encontrada para essa busca</option>';
+  } else {
+    produtoSelect.innerHTML = '<option value="">— Selecione (' + visiveis.length + ') —</option>' + visiveis.map(function (p) {
+      return '<option value="' + p.id + '">' + p.nome_produto + '</option>';
+    }).join('');
+    if (visiveis.length === 1 && termo.trim()) produtoSelect.value = visiveis[0].id;
+  }
+  document.getElementById('select-vacuo-estoque-readout').textContent = '';
+  produtoSelect.dispatchEvent(new Event('change'));
+}
+
 document.getElementById('select-vacuo-categoria').addEventListener('change', function (e) {
   var produtoSelect = document.getElementById('select-vacuo-produto');
   var categoria = CATEGORIAS_EMBALAGEM_VACUO.find(function (c) { return c.label === e.target.value; });
+  document.getElementById('select-vacuo-busca').value = '';
 
   if (!categoria) {
+    produtosVacuoDaCategoria = [];
     produtoSelect.innerHTML = '<option value="">— Escolha a categoria primeiro —</option>';
     return;
   }
 
-  var produtos = catalogoCache.filter(function (p) {
+  produtosVacuoDaCategoria = catalogoCache.filter(function (p) {
     var c = categoriaEmbalagemDoProduto(p.nome_produto);
     return c && c.label === categoria.label;
   });
-
-  if (!produtos.length) {
-    produtoSelect.innerHTML = '<option value="">Nenhuma medida cadastrada nessa categoria</option>';
-    return;
-  }
-
-  produtoSelect.innerHTML = '<option value="">— Selecione —</option>' + produtos.map(function (p) {
-    return '<option value="' + p.id + '">' + p.nome_produto + '</option>';
-  }).join('');
-  document.getElementById('select-vacuo-estoque-readout').textContent = '';
+  renderOpcoesVacuo();
 });
+
+document.getElementById('select-vacuo-busca').addEventListener('input', renderOpcoesVacuo);
 
 document.getElementById('select-vacuo-produto').addEventListener('change', function (e) {
   var produto = catalogoCache.find(function (p) { return p.id === e.target.value; });
@@ -559,7 +576,7 @@ document.getElementById('modal-btn-adicionar').addEventListener('click', async f
   }
 
   var codigo = document.getElementById('modal-codigo').value.trim();
-  var ncm = document.getElementById('modal-ncm').value.trim();
+  var ncm = document.getElementById('modal-ncm').value.replace(/[.\s-]/g, '');
   var preco = toNumber(document.getElementById('modal-preco').value);
   var quantidade = toNumber(document.getElementById('modal-quantidade').value);
   var salvarCatalogo = document.getElementById('modal-salvar-catalogo').checked;
@@ -621,17 +638,36 @@ async function loadCatalogoParaSelecionar() {
   // aqui em Etiquetas/Equipamentos — evita listar as mesmas medidas nos 2 lugares.
   var produtosEtiquetas = catalogoCache.filter(function (p) { return !categoriaEmbalagemDoProduto(p.nome_produto); });
 
+  produtosGeraisDisponiveis = produtosEtiquetas;
+  renderOpcoesGerais();
+}
+
+var produtosGeraisDisponiveis = [];
+
+function renderOpcoesGerais() {
   var select = document.getElementById('select-produto-existente');
-  if (!produtosEtiquetas.length) {
+  var termo = document.getElementById('select-produto-busca').value;
+  if (!produtosGeraisDisponiveis.length) {
     select.innerHTML = '<option value="">Nenhum produto cadastrado ainda</option>';
     return;
   }
-  select.innerHTML = '<option value="">— Selecione —</option>' + produtosEtiquetas.map(function (p) {
+  var visiveis = produtosGeraisDisponiveis.filter(function (p) { return produtoCombinaBusca(p, termo); });
+  if (!visiveis.length) {
+    select.innerHTML = '<option value="">Nenhum produto encontrado para essa busca</option>';
+    return;
+  }
+  select.innerHTML = '<option value="">— Selecione (' + visiveis.length + ') —</option>' + visiveis.map(function (p) {
     return '<option value="' + p.id + '">' + p.nome_produto + '</option>';
   }).join('');
+  if (visiveis.length === 1 && termo.trim()) select.value = visiveis[0].id;
+  select.dispatchEvent(new Event('change'));
 }
 
+document.getElementById('select-produto-busca').addEventListener('input', renderOpcoesGerais);
+
 function openSelecionarModal() {
+  document.getElementById('select-produto-busca').value = '';
+  renderOpcoesGerais();
   document.getElementById('select-produto-existente').value = '';
   document.getElementById('select-produto-codigo-readout').textContent = '—';
   document.getElementById('select-produto-ncm-readout').textContent = '—';
