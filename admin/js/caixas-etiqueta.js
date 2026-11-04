@@ -28,11 +28,11 @@ function medidasEtiqueta(nomeProduto) {
 
 // Alguns fornecedores embalam diferente da regra geral — identificados pela marca no nome do
 // produto. Thermoprint: caixa de 60 mm de 30 m tem 32 rolos (40 mm de 30 m = 48, igual à regra geral).
-// Capital: caixa de 40 mm de 30 m tem 60 rolos (a regra geral dá 48) e a de 60 mm de 30 m também
-// tem 60 rolos (a regra geral dá 30).
+// Capital: caixa de 40 mm de 30 m tem 60 rolos (a regra geral dá 48), a de 40 mm de 28 m também tem
+// 60 rolos, e a de 60 mm de 30 m também tem 60 rolos (a regra geral dá 30).
 var ROLOS_POR_CAIXA_POR_MARCA = {
   THERMO: { 60: { 30: 32 } },
-  CAPITAL: { 40: { 30: 60 }, 60: { 30: 60 } }
+  CAPITAL: { 40: { 28: 60, 30: 60 }, 60: { 30: 60 } }
 };
 
 function rolosPorCaixaDoProduto(nomeProduto) {
