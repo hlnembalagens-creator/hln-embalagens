@@ -752,9 +752,9 @@ document.getElementById('forma_pagamento').addEventListener('change', function (
   var mostrarVista = deveMostrarDescontoVista();
   document.getElementById('desconto-vista-field').style.display = mostrarVista ? 'flex' : 'none';
   document.getElementById('valor-vista-field').style.display = mostrarVista ? 'flex' : 'none';
-  // O Pix fica sempre visível quando alguma forma de pagamento é escolhida — o cliente
-  // pode acabar pagando via Pix mesmo que o pedido tenha sido fechado em outra forma.
-  document.getElementById('pix-info-group').style.display = v ? 'grid' : 'none';
+  // A chave Pix só aparece quando a forma de pagamento combinada é Pix — mostrar em outras
+  // formas (boleto, cartão) fazia o cliente pagar via Pix sem avisar.
+  document.getElementById('pix-info-group').style.display = v === 'pix' ? 'grid' : 'none';
   atualizarValorVista();
 });
 
@@ -1199,9 +1199,8 @@ function formatarFormaPagamento() {
 }
 
 function deveMostrarChavePix() {
-  // O Pix aparece sempre que alguma forma de pagamento foi escolhida — o cliente
-  // pode acabar pagando via Pix mesmo que o pedido tenha sido fechado em outra forma.
-  return !!document.getElementById('forma_pagamento').value;
+  // Só quando a forma de pagamento do pedido é Pix.
+  return document.getElementById('forma_pagamento').value === 'pix';
 }
 
 function obterPixDiasTexto() {
