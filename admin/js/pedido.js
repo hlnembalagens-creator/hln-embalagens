@@ -908,6 +908,7 @@ async function salvarPedidoNoBanco(tipo, statusOrcamento, mudarTipo) {
   var pedidoPayload = {
     cliente_id: selectedCliente.id,
     prazo_entrega: document.getElementById('prazo_entrega').value || null,
+    pedido_cliente: document.getElementById('pedido_cliente').value.trim() || null,
     icms: document.getElementById('icms').value || null,
     ipi: document.getElementById('ipi').value || null,
     regime_tributacao: document.getElementById('regime_tributacao').value || null,
@@ -1198,6 +1199,14 @@ function formatarFormaPagamento() {
   return texto;
 }
 
+// "Nº do pedido do cliente": só entra no documento quando foi preenchido.
+function linhaPedidoCliente() {
+  var numero = (document.getElementById('pedido_cliente').value || '').trim();
+  if (!numero) return '';
+  var seguro = numero.replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  return '<p><strong>PEDIDO DO CLIENTE Nº:</strong> ' + seguro + '</p>';
+}
+
 function deveMostrarChavePix() {
   // Só quando a forma de pagamento do pedido é Pix.
   return document.getElementById('forma_pagamento').value === 'pix';
@@ -1310,6 +1319,7 @@ function buildViaHtml(label) {
     '<p><strong>CLIENTE:</strong> ' + (cliente.razao_social || '') + (cliente.nome_fantasia ? ' (' + cliente.nome_fantasia + ')' : '') + '</p>' +
     '<p><strong>ENDEREÇO:</strong> ' + enderecoCompleto + '</p>' +
     '<p><strong>CNPJ/CPF:</strong> ' + (cliente.cnpj_cpf || '') + ' &nbsp; <strong>CÓDIGO:</strong> ' + (cliente.codigo || '') + ' &nbsp; <strong>I.E:</strong> ' + (cliente.ie || '') + '</p>' +
+    linhaPedidoCliente() +
     '<p><strong>CONTATO:</strong> ' + (cliente.contato_nome || '') + ' &nbsp; <strong>TEL:</strong> ' + (cliente.contato_telefone || '') + ' &nbsp; <strong>EMAIL:</strong> ' + (cliente.contato_email || '') + '</p>' +
     (vacuoRowsHtml ? '<table><thead><tr><th>Item</th><th>Material</th><th>Larg.</th><th>Comp.</th><th>Esp.</th><th>Tipo</th><th>Peso</th><th>Qtd</th><th>Peso Total</th><th>Vl. Unit.</th><th>Vl. Total</th></tr></thead><tbody>' + vacuoRowsHtml + '</tbody></table>' : '') +
     (geraisRowsHtml ? (modoFornecedorEtiqueta()
@@ -1387,6 +1397,7 @@ function buildOrcamentoHtml() {
     '<p>' + enderecoCompleto + '</p>' +
     '<p>CNPJ/CPF: ' + (cliente.cnpj_cpf || '') + (cliente.contato_nome ? ' &nbsp; Contato: ' + cliente.contato_nome : '') +
       (cliente.contato_telefone ? ' — ' + cliente.contato_telefone : '') + '</p>' +
+    linhaPedidoCliente() +
 
     '<div class="secao-titulo">Itens</div>' +
     (vacuoRowsHtml || geraisRowsHtml
@@ -1516,6 +1527,7 @@ async function iniciarEdicaoPedido(pedidoId) {
   renderGeraisItems();
 
   document.getElementById('prazo_entrega').value = pedido.prazo_entrega || '';
+  document.getElementById('pedido_cliente').value = pedido.pedido_cliente || '';
   document.getElementById('icms').value = pedido.icms || '';
   document.getElementById('ipi').value = pedido.ipi || '';
   document.getElementById('regime_tributacao').value = pedido.regime_tributacao || '';

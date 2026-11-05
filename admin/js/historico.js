@@ -244,6 +244,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado, destac
     return '<div data-pedido-numero="' + pedido.numero + '" style="border-bottom:1px solid var(--off-white); padding:14px 8px;' + (destacado ? ' background:#fff7e0; border-left:4px solid #e0a800;' : '') + '">' +
       '<strong>' + tipoLabel + '</strong> <span class="badge ' + badgeClass + '">' + badgeText + '</span> ' + pagoBadge + nfBadge + ' — ' + dataStr +
       ' &nbsp; <span style="color:var(--gray-400);">' + formatarFormaPagamentoHistorico(pedido) + '</span>' +
+      (pedido.pedido_cliente ? ' &nbsp; <span class="badge" style="background:#e9edf5; color:#4a5875;">Pedido do cliente: ' + String(pedido.pedido_cliente).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }) + '</span>' : '') +
       '<ul style="margin:8px 0 8px 20px; font-size:0.88rem;">' + itensVacuo + itensGerais + '</ul>' +
       '<strong>Valor total a pagar: ' + formatBRLHistorico(pedido.valor_total_a_pagar) + '</strong>' +
       acoes +
