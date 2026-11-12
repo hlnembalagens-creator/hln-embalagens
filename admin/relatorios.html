@@ -71,6 +71,47 @@
       </table>
     </div>
   </div>
+
+  <h1 class="admin-title" style="margin-top:32px;">Frequência de compra e estoque sugerido</h1>
+
+  <div class="admin-card">
+    <div class="dashboard-card-title">Frequência de compra por cliente</div>
+    <div class="dashboard-card-hint">Usa todo o histórico de cada cliente. "Intervalo médio" é o tempo médio entre uma compra e a seguinte; a próxima compra é estimada somando esse intervalo à última compra. Com uma compra só não há como estimar ("Poucos dados"). Só vendas de clientes reais (sem fornecedores).</div>
+    <div class="form-actions" style="margin-bottom:10px;"><button type="button" class="btn btn-outline" id="btn-exportar-freq-clientes">Exportar Excel</button></div>
+    <div class="table-scroll">
+      <table class="admin-table">
+        <thead><tr><th>Cliente</th><th>Compras</th><th>Última compra</th><th>Frequência</th><th>Próxima estimada</th><th>Situação</th><th>Ticket médio</th><th>Total comprado</th><th>Costuma comprar</th></tr></thead>
+        <tbody id="freq-clientes-tbody"><tr><td colspan="9">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="admin-card">
+    <div class="dashboard-card-title">Consumo e estoque sugerido por produto</div>
+    <div class="form-grid" style="align-items:end; margin-bottom:10px;">
+      <div class="form-field">
+        <label for="freq-periodo">Período analisado</label>
+        <select id="freq-periodo">
+          <option value="60">Últimos 60 dias</option>
+          <option value="90" selected>Últimos 90 dias</option>
+          <option value="180">Últimos 180 dias</option>
+          <option value="tudo">Todo o histórico</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="freq-cobertura">Quantos dias de estoque manter</label>
+        <input type="number" id="freq-cobertura" min="1" value="45">
+      </div>
+      <div class="form-field"><button type="button" class="btn btn-outline" id="btn-exportar-freq-produtos">Exportar Excel</button></div>
+    </div>
+    <div class="dashboard-card-hint" id="freq-produtos-hint"></div>
+    <div class="table-scroll">
+      <table class="admin-table">
+        <thead><tr><th>Produto</th><th>Vendido no período</th><th>Compraram</th><th>Consumo mensal</th><th>Estoque atual</th><th>Cobertura</th><th>Estoque sugerido</th><th>Repor</th></tr></thead>
+        <tbody id="freq-produtos-tbody"><tr><td colspan="8">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
 </main>
 
 <div id="toast-container"></div>
@@ -84,6 +125,8 @@
 <script src="js/toast.js"></script>
 <script src="js/calc-vacuo.js"></script>
 <script src="js/excel-utils.js"></script>
+<script src="js/caixas-etiqueta.js"></script>
 <script src="js/relatorios.js"></script>
+<script src="js/relatorio-frequencia.js"></script>
 </body>
 </html>
