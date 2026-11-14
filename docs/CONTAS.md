@@ -19,3 +19,12 @@ Excluir manualmente depois de conferir que nada de produção depende delas.
 ## Opcional
 - Os cadastros da Vercel (e talvez GitHub e Supabase) ainda usam o Gmail antigo `hlnembalagens@gmail.com`.
   Quando quiser, trocar para `contato@hlnembalagens.com.br` em cada serviço (1 de cada vez, conferindo o e-mail de confirmação).
+
+## Limpeza da Qubo (decidido em 14/11/2026)
+- Verificado: o repositório da HLN **não referencia nada da Qubo** (só o Supabase e a Vercel da conta da HLN).
+- Supabase da Qubo: `hln-embalagens` antigo (ref `uothefghnrjxqpowmaqt`, sem requisições de API em 24 h, em hibernação — o conector não conseguiu pausar) e
+  `hln-gestao-crm` (ref `agtlqmbhkajsxdpeqviq`, pausado). **Observar 1 semana (até 21/11/2026) e depois apagar.**
+- GitHub QuboTech: apagar `Monitor-Qubo`, `QUBO-Dashboard`, `Cervejas-Receitas-` e `Cervejas-Receitas-Agent` (em desuso, autorizado pelo usuário);
+  Supabase `qubo-dashboard` e `Agente Brejas` pelo mesmo motivo. Exclusão é manual (sem ferramenta de exclusão nesta sessão).
+- **Manter** `Gest-o-CRM`: será a base de vários projetos (ver plano de template).
+- Única dependência externa viva da HLN: Resend (remetente `@hopvest.com.br`), a migrar para o domínio da HLN.
