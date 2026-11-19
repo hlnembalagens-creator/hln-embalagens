@@ -113,6 +113,7 @@ function formatarTelefone(valor) {
 
 var clientesComOrcamentoPendente = {};
 var cnpjDuplicadoMap = {};
+var estatCompraPorCliente = {};
 
 async function loadClientes() {
   var { data, error } = await supabaseClient
@@ -126,6 +127,10 @@ async function loadClientes() {
   }
 
   allClientes = data || [];
+
+  // Última compra / frequência de cada cliente (só pedidos confirmados)
+  var { data: pedidosConf } = await supabaseClient.from('pedidos').select('cliente_id, created_at').eq('tipo', 'pedido');
+  estatCompraPorCliente = (typeof estatisticasPorCliente === 'function') ? estatisticasPorCliente(pedidosConf || []) : {};
 
   // Vendedor não enxerga cadastros de fornecedor (ex: Altisvac, Capital) — só clientes de verdade.
   if (ROLES_VENDEDOR.indexOf(currentUserRole) !== -1) {
@@ -157,13 +162,13 @@ async function loadClientes() {
 }
 
 function renderClientesPlaceholder() {
-  document.getElementById('clientes-tbody').innerHTML = '<tr><td colspan="5">Digite um nome ou CNPJ acima e clique em Pesquisar.</td></tr>';
+  document.getElementById('clientes-tbody').innerHTML = '<tr><td colspan="6">Digite um nome ou CNPJ acima e clique em Pesquisar.</td></tr>';
 }
 
 function renderClientesTable(list) {
   var tbody = document.getElementById('clientes-tbody');
   if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="5">Nenhum cliente encontrado com esse termo.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6">Nenhum cliente encontrado com esse termo.</td></tr>';
     return;
   }
 
@@ -174,11 +179,20 @@ function renderClientesTable(list) {
     var cnpjNormalizado = normalizarCnpj(c.cnpj_cpf);
     var badgeDuplicado = (cnpjNormalizado && cnpjDuplicadoMap[cnpjNormalizado] > 1) ? ' <span class="badge badge-warning">CNPJ/CPF duplicado</span>' : '';
     var badgeFornecedor = c.eh_fornecedor ? ' <span class="badge badge-ok">Fornecedor</span>' : '';
+    var est = estatCompraPorCliente[c.id];
+    var ultimaTxt = '—';
+    if (est) {
+      ultimaTxt = 'há ' + formatarTempoCompraCompleto(est.diasDesdeUltima) +
+        '<br><small style="color:var(--gray-400);">' + est.pedidos + ' pedido' + (est.pedidos > 1 ? 's' : '') +
+        (est.intervaloMedio != null ? ' · a cada ' + formatarTempoCompra(est.intervaloMedio) : '') + '</small>' +
+        (est.mensal ? ' <span class="badge badge-ok">Compra todo mês</span>' : '');
+    }
     return '<tr>' +
-      '<td>' + (c.razao_social || '') + badgePendente + badgeDuplicado + badgeFornecedor + '</td>' +
-      '<td>' + (c.nome_fantasia || '—') + '</td>' +
-      '<td>' + (c.cnpj_cpf || '—') + '</td>' +
-      '<td>' + contato + '</td>' +
+      '<td data-label="Razão Social">' + (c.razao_social || '') + badgePendente + badgeDuplicado + badgeFornecedor + '</td>' +
+      '<td data-label="Fantasia">' + (c.nome_fantasia || '—') + '</td>' +
+      '<td data-label="CNPJ/CPF">' + (c.cnpj_cpf || '—') + '</td>' +
+      '<td data-label="Contato">' + contato + '</td>' +
+      '<td data-label="Última compra">' + ultimaTxt + '</td>' +
       '<td class="row-actions">' +
         '<button data-historico="' + c.id + '">Histórico</button>' +
         (c.eh_fornecedor ? '' : '<button data-pedido="' + c.id + '">Pedido</button>') +

@@ -254,7 +254,7 @@ function renderClientesRanking() {
         var nome = c.cliente.razao_social + (c.cliente.nome_fantasia ? ' (' + c.cliente.nome_fantasia + ')' : '');
         var localidade = [c.cliente.municipio, c.cliente.uf].filter(Boolean).join('/') || '—';
         return '<tr><td><span class="semaforo-dot ' + semaforoClasse(dias) + '"></span></td><td>' + nome + '</td><td>' + localidade + '</td>' +
-          '<td>' + formatDataDash(c.ultimaCompra) + '</td><td>' + dias + ' dia(s)</td></tr>';
+          '<td>' + formatDataDash(c.ultimaCompra) + '</td><td>' + formatarTempoCompraCompleto(dias) + '</td></tr>';
       }).join('');
   }
 
@@ -386,7 +386,36 @@ function renderProdutosRanking() {
 
 /* ===================== FILTRO (mês/ano) ===================== */
 
+function renderRecompra() {
+  var tbody = document.getElementById('recompra-tbody');
+  if (!tbody) return;
+  var stats = estatisticasPorCliente(todosPedidos);
+  var nomes = {};
+  todosPedidos.forEach(function (p) { if (!nomes[p.cliente_id]) nomes[p.cliente_id] = p.clientes; });
+  var lista = Object.keys(stats).filter(function (id) { return stats[id] && stats[id].mensal; })
+    .map(function (id) { return { id: id, est: stats[id], cli: nomes[id] }; })
+    .sort(function (a, b) {
+      // quem precisa de contato primeiro (mais dias além do intervalo), depois os demais
+      return (b.est.diasDesdeUltima - b.est.intervaloMedio) - (a.est.diasDesdeUltima - a.est.intervaloMedio);
+    });
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="5">Ainda não há clientes com compra mensal recorrente (precisa de 3+ pedidos).</td></tr>';
+    return;
+  }
+  tbody.innerHTML = lista.map(function (x) {
+    var nome = x.cli.razao_social + (x.cli.nome_fantasia ? ' (' + x.cli.nome_fantasia + ')' : '');
+    var situacao = x.est.horaDeLigar
+      ? '<span class="badge badge-warning">Hora de ligar</span>'
+      : '<span class="badge badge-ok">No prazo</span>';
+    return '<tr><td data-label="Cliente">' + nome + '</td><td data-label="Pedidos">' + x.est.pedidos + '</td>' +
+      '<td data-label="Compra a cada">' + formatarTempoCompra(x.est.intervaloMedio) + '</td>' +
+      '<td data-label="Última compra">' + formatDataDash(x.est.ultimaCompra) + ' · há ' + formatarTempoCompraCompleto(x.est.diasDesdeUltima) + '</td>' +
+      '<td data-label="Situação">' + situacao + '</td></tr>';
+  }).join('');
+}
+
 function renderTudo() {
+  renderRecompra();
   renderMei();
   renderKpisEGraficos();
   renderClientesRanking();

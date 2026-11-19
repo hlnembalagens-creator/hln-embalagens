@@ -175,6 +175,18 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado, destac
     return;
   }
 
+  // Tempo desde o pedido anterior deste cliente (só pedidos confirmados contam)
+  var tempoAposAnterior = {};
+  if (typeof formatarTempoCompra === 'function') {
+    var confirmados = data.filter(function (p) { return p.tipo !== 'orcamento'; })
+      .sort(function (a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+    confirmados.forEach(function (p, i) {
+      if (i === 0) { tempoAposAnterior[p.id] = 'Primeira compra'; return; }
+      var dias = Math.floor((new Date(p.created_at) - new Date(confirmados[i - 1].created_at)) / 86400000);
+      tempoAposAnterior[p.id] = formatarTempoCompra(dias) === 'hoje' ? 'Mesmo dia do anterior' : formatarTempoCompra(dias) + ' após o anterior';
+    });
+  }
+
   conteudo.innerHTML = data.map(function (pedido) {
     var dataStr = new Date(pedido.created_at).toLocaleDateString('pt-BR');
     var itensVacuo = (pedido.pedido_itens_vacuo || []).map(function (i) {
@@ -243,6 +255,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado, destac
     var destacado = destacarNumero != null && Number(pedido.numero) === Number(destacarNumero);
     return '<div data-pedido-numero="' + pedido.numero + '" style="border-bottom:1px solid var(--off-white); padding:14px 8px;' + (destacado ? ' background:#fff7e0; border-left:4px solid #e0a800;' : '') + '">' +
       '<strong>' + tipoLabel + '</strong> <span class="badge ' + badgeClass + '">' + badgeText + '</span> ' + pagoBadge + nfBadge + ' — ' + dataStr +
+      (tempoAposAnterior[pedido.id] ? ' <span class="badge badge-tempo" title="Tempo desde a compra anterior deste cliente">⏱ ' + tempoAposAnterior[pedido.id] + '</span>' : '') +
       ' &nbsp; <span style="color:var(--gray-400);">' + formatarFormaPagamentoHistorico(pedido) + '</span>' +
       (pedido.pedido_cliente ? ' &nbsp; <span class="badge" style="background:#e9edf5; color:#4a5875;">Pedido do cliente: ' + String(pedido.pedido_cliente).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }) + '</span>' : '') +
       '<ul style="margin:8px 0 8px 20px; font-size:0.88rem;">' + itensVacuo + itensGerais + '</ul>' +

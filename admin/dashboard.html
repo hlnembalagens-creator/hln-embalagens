@@ -9,6 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../css/style.css">
 <link rel="stylesheet" href="css/admin.css">
+<link rel="stylesheet" href="css/mobile.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0a1930">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body class="admin-body">
 
@@ -128,6 +132,17 @@
     </div>
   </div>
 
+  <div class="admin-card" id="card-recompra">
+    <div class="dashboard-card-title">Clientes que compram todo mês</div>
+    <div class="dashboard-card-hint">Clientes com 3+ pedidos e intervalo médio de 20 a 45 dias. <span class="badge badge-warning">Hora de ligar</span> = já passou (ou está perto de passar) o intervalo normal de compra.</div>
+    <div class="table-scroll">
+      <table class="admin-table">
+        <thead><tr><th>Cliente</th><th>Pedidos</th><th>Compra a cada</th><th>Última compra</th><th>Situação</th></tr></thead>
+        <tbody id="recompra-tbody"><tr><td colspan="5">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
   <div class="admin-card">
     <div class="dashboard-card-title">Recência de compra por cliente</div>
     <div class="dashboard-card-hint">
@@ -156,6 +171,8 @@
 <script src="js/supabase-client.js"></script>
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
+<script src="js/tempo-compra.js"></script>
 <script src="js/dashboard.js"></script>
+<script src="js/mobile.js"></script>
 </body>
 </html>
