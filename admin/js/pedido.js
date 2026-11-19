@@ -123,13 +123,14 @@ async function loadVendedoresSelect() {
   if (error) return;
   vendedoresCache = data || [];
 
-  // Entram vendedores (Ext/Int) e também os sócios (admin/ADM1), todos ativos.
-  // Cada um aparece com o perfil entre parênteses para não confundir.
+  // Todos os usuários ativos entram (vendedores e sócios). Quem está logado já vem
+  // selecionado; o sócio só troca se estiver lançando o pedido em nome de outra pessoa.
   var ROTULO = { admin: 'Sócio', admin1: 'Sócio', vendedor: 'Vendedor', vendedor_ext: 'Vendedor Ext.', vendedor_int: 'Vendedor Int.' };
-  select.innerHTML = '<option value="">— Eu mesmo —</option>' + vendedoresCache
-    .filter(function (p) { return p.id !== currentUserId && p.ativo !== false && ROTULO[p.role]; })
-    .map(function (p) { return '<option value="' + p.id + '">' + p.nome_exibicao + ' (' + ROTULO[p.role] + ')</option>'; })
+  select.innerHTML = vendedoresCache
+    .filter(function (p) { return p.ativo !== false && ROTULO[p.role]; })
+    .map(function (p) { return '<option value="' + p.id + '">' + p.nome_exibicao + ' (' + ROTULO[p.role] + ')' + (p.id === currentUserId ? ' — você' : '') + '</option>'; })
     .join('');
+  select.value = currentUserId;
 }
 
 function obterVendedorResponsavelId() {
@@ -1505,7 +1506,7 @@ async function iniciarEdicaoPedido(pedidoId) {
   document.getElementById('select-cliente').dispatchEvent(new Event('change', { bubbles: true }));
 
   var vendedorSelect = document.getElementById('vendedor_responsavel');
-  if (vendedorSelect) vendedorSelect.value = (pedido.vendedor_id && pedido.vendedor_id !== currentUserId) ? pedido.vendedor_id : '';
+  if (vendedorSelect) vendedorSelect.value = pedido.vendedor_id || currentUserId;
 
   (pedido.pedido_itens_vacuo || []).slice().sort(function (a, b) { return a.ordem - b.ordem; }).forEach(function (i) {
     var item = {

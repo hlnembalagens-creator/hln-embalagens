@@ -34,6 +34,10 @@ var graficoMes = null;
 var graficoPago = null;
 var erroProdutos = false;
 var podeMarcarNf = false;
+var ehAdminDash = false;       // sócios (admin/ADM1) veem todos os vendedores
+var meuIdDash = null;
+var heatmapVendedor = '';      // '' = todos (só sócios)
+var nomesVendedoresDash = {};  // id -> nome
 
 function noPeriodo(dataIso) {
   var d = new Date(dataIso);
@@ -290,26 +294,37 @@ function renderClientesRanking() {
     '</div>';
   }).join('');
 
-  // Mapa de calor por cidade — conta pedidos pelo município do cliente
+  // Mapa de calor por cidade — conta pedidos pelo município do cliente, por vendedor.
+  // Vendedor só enxerga as próprias vendas; sócios veem todas e podem filtrar por vendedor.
+  var pedidosMapa = pedidos.filter(function (p) {
+    if (!ehAdminDash) return p.vendedor_id === meuIdDash;
+    return !heatmapVendedor || p.vendedor_id === heatmapVendedor;
+  });
   var porCidade = {};
-  pedidos.forEach(function (p) {
+  var porCidadeVendedor = {};
+  pedidosMapa.forEach(function (p) {
     var cidade = (p.clientes.municipio || '').trim();
     if (!cidade) return;
     var uf = (p.clientes.uf || '').toUpperCase().trim();
     var chave = cidade + (uf ? '/' + uf : '');
     porCidade[chave] = (porCidade[chave] || 0) + 1;
+    var nomeV = nomesVendedoresDash[p.vendedor_id] || 'Sem vendedor';
+    porCidadeVendedor[chave] = porCidadeVendedor[chave] || {};
+    porCidadeVendedor[chave][nomeV] = (porCidadeVendedor[chave][nomeV] || 0) + 1;
   });
   var cidadesOrdenadas = Object.keys(porCidade).sort(function (a, b) { return porCidade[b] - porCidade[a]; });
   if (!cidadesOrdenadas.length) {
-    heatmapEl.innerHTML = '<p class="dashboard-empty">Nenhum cliente com cidade cadastrada ainda.</p>';
+    heatmapEl.innerHTML = '<p class="dashboard-empty">Nenhuma venda com cidade cadastrada para este filtro.</p>';
   } else {
     var maxCount = porCidade[cidadesOrdenadas[0]];
     heatmapEl.innerHTML = cidadesOrdenadas.map(function (cidade) {
       var count = porCidade[cidade];
       var intensidade = 0.35 + 0.65 * (count / maxCount); // 0.35 a 1.0 de opacidade
+      var quem = Object.keys(porCidadeVendedor[cidade]).map(function (n) { return n + ' ' + porCidadeVendedor[cidade][n]; }).join(' · ');
       return '<div class="heatmap-cell" style="background: rgba(47, 125, 225, ' + intensidade.toFixed(2) + ');">' +
         '<span class="heatmap-uf">' + cidade + '</span>' +
         '<span class="heatmap-count">' + count + ' pedido(s)</span>' +
+        '<span class="heatmap-count" style="font-size:0.7rem; opacity:.9;">' + quem + '</span>' +
       '</div>';
     }).join('');
   }
@@ -414,6 +429,26 @@ function renderRecompra() {
   }).join('');
 }
 
+async function iniciarSeletorVendedorMapa() {
+  var { data } = await supabaseClient.from('profiles').select('id, nome_exibicao, role, ativo');
+  (data || []).forEach(function (u) { nomesVendedoresDash[u.id] = u.nome_exibicao; });
+  var nota = document.getElementById('heatmap-nota');
+  var wrap = document.getElementById('heatmap-vendedor-wrap');
+  if (!ehAdminDash) {
+    if (nota) nota.textContent = 'Mostrando só as suas vendas. Os sócios (Gustavo, Nelson e Heric) conseguem ver o mapa de todos os vendedores.';
+    return;
+  }
+  if (nota) nota.textContent = 'Você é sócio: vê todos os vendedores. Escolha um para ver só as vendas dele; no modo "Todos" cada cidade mostra o nome de quem vendeu.';
+  var sel = document.getElementById('heatmap-vendedor');
+  if (!sel || !wrap) return;
+  wrap.style.display = '';
+  sel.innerHTML = '<option value="">Todos os vendedores</option>' + (data || [])
+    .filter(function (u) { return u.ativo !== false; })
+    .sort(function (a, b) { return String(a.nome_exibicao).localeCompare(String(b.nome_exibicao)); })
+    .map(function (u) { return '<option value="' + u.id + '">' + u.nome_exibicao + '</option>'; }).join('');
+  sel.addEventListener('change', function () { heatmapVendedor = sel.value; renderClientesRanking(); });
+}
+
 function renderTudo() {
   renderRecompra();
   renderMei();
@@ -464,6 +499,9 @@ function iniciarFiltros() {
   }
   todosPedidos = resultado.pedidos;
   podeMarcarNf = !ehVendedor;
+  ehAdminDash = !ehVendedor;
+  meuIdDash = auth.session.user.id;
+  await iniciarSeletorVendedorMapa();
 
   var itensOk = await carregarItensProdutos();
   erroProdutos = !itensOk;
