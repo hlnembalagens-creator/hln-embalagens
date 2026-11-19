@@ -76,3 +76,8 @@
   .badge { white-space: nowrap; }
   .admin-table:not(.no-cards) td .badge { margin-left: 6px; }
 }
+
+@media (max-width: 760px) {
+  .admin-table:not(.no-cards) td.cel-compras { display: block; text-align: left; background: #f3f7ff; border-radius: 10px; padding: 10px 12px; margin: 6px 0; border-bottom: 0; line-height: 1.5; }
+  .admin-table:not(.no-cards) td.cel-compras::before { display: block; margin-bottom: 4px; }
+}

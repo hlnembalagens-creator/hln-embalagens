@@ -180,19 +180,20 @@ function renderClientesTable(list) {
     var badgeDuplicado = (cnpjNormalizado && cnpjDuplicadoMap[cnpjNormalizado] > 1) ? ' <span class="badge badge-warning">CNPJ/CPF duplicado</span>' : '';
     var badgeFornecedor = c.eh_fornecedor ? ' <span class="badge badge-ok">Fornecedor</span>' : '';
     var est = estatCompraPorCliente[c.id];
-    var ultimaTxt = '—';
+    var ultimaTxt = '<span style="color:var(--gray-400);">Nenhuma compra registrada</span>';
     if (est) {
-      ultimaTxt = 'há ' + formatarTempoCompraCompleto(est.diasDesdeUltima) +
-        '<br><small style="color:var(--gray-400);">' + est.pedidos + ' pedido' + (est.pedidos > 1 ? 's' : '') +
-        (est.intervaloMedio != null ? ' · a cada ' + formatarTempoCompra(est.intervaloMedio) : '') + '</small>' +
-        (est.mensal ? ' <span class="badge badge-ok">Compra todo mês</span>' : '');
+      ultimaTxt = '<strong>' + est.pedidos + ' compra' + (est.pedidos > 1 ? 's' : '') + '</strong><br>' +
+        'Última: há ' + formatarTempoCompraCompleto(est.diasDesdeUltima) + ' (' + new Date(est.ultimaCompra).toLocaleDateString('pt-BR') + ')' +
+        (est.intervaloMedio != null ? '<br>Compra a cada ' + formatarTempoCompra(est.intervaloMedio) : '') +
+        (est.mensal ? '<br><span class="badge badge-ok">Compra todo mês</span>' : '') +
+        (est.horaDeLigar ? ' <span class="badge badge-warning">Hora de ligar</span>' : '');
     }
     return '<tr>' +
       '<td data-label="Razão Social">' + (c.razao_social || '') + badgePendente + badgeDuplicado + badgeFornecedor + '</td>' +
       '<td data-label="Fantasia">' + (c.nome_fantasia || '—') + '</td>' +
       '<td data-label="CNPJ/CPF">' + (c.cnpj_cpf || '—') + '</td>' +
       '<td data-label="Contato">' + contato + '</td>' +
-      '<td data-label="Última compra">' + ultimaTxt + '</td>' +
+      '<td data-label="Compras" class="cel-compras">' + ultimaTxt + '</td>' +
       '<td class="row-actions">' +
         '<button data-historico="' + c.id + '">Histórico</button>' +
         (c.eh_fornecedor ? '' : '<button data-pedido="' + c.id + '">Pedido</button>') +
