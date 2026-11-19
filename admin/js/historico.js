@@ -161,7 +161,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado, destac
 
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('*, clientes(razao_social, nome_fantasia, eh_fornecedor, nao_contabilizar), pedido_itens_vacuo(*), pedido_itens_gerais(*)')
+    .select('*, clientes(razao_social, nome_fantasia, eh_fornecedor, nao_contabilizar), vendedor:profiles!vendedor_id(nome_exibicao), pedido_itens_vacuo(*), pedido_itens_gerais(*)')
     .eq('cliente_id', clienteId)
     .order('created_at', { ascending: false });
 
@@ -257,6 +257,7 @@ async function loadHistoricoCliente(clienteId, containerId, onAtualizado, destac
       '<strong>' + tipoLabel + '</strong> <span class="badge ' + badgeClass + '">' + badgeText + '</span> ' + pagoBadge + nfBadge + ' — ' + dataStr +
       (tempoAposAnterior[pedido.id] ? ' <span class="badge badge-tempo" title="Tempo desde a compra anterior deste cliente">⏱ ' + tempoAposAnterior[pedido.id] + '</span>' : '') +
       ' &nbsp; <span style="color:var(--gray-400);">' + formatarFormaPagamentoHistorico(pedido) + '</span>' +
+      (pedido.vendedor && pedido.vendedor.nome_exibicao ? ' &nbsp; <span class="badge" style="background:#eef2f9; color:#33415c;">Vendedor: ' + String(pedido.vendedor.nome_exibicao).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }) + '</span>' : '') +
       (pedido.pedido_cliente ? ' &nbsp; <span class="badge" style="background:#e9edf5; color:#4a5875;">Pedido do cliente: ' + String(pedido.pedido_cliente).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }) + '</span>' : '') +
       '<ul style="margin:8px 0 8px 20px; font-size:0.88rem;">' + itensVacuo + itensGerais + '</ul>' +
       '<strong>Valor total a pagar: ' + formatBRLHistorico(pedido.valor_total_a_pagar) + '</strong>' +

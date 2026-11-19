@@ -123,11 +123,12 @@ async function loadVendedoresSelect() {
   if (error) return;
   vendedoresCache = data || [];
 
-  // Só entra quem realmente é vendedor (Ext/Int) — sócios (admin/ADM1) não
-  // aparecem aqui, essa lista é só pra creditar a venda a um vendedor de verdade.
+  // Entram vendedores (Ext/Int) e também os sócios (admin/ADM1), todos ativos.
+  // Cada um aparece com o perfil entre parênteses para não confundir.
+  var ROTULO = { admin: 'Sócio', admin1: 'Sócio', vendedor: 'Vendedor', vendedor_ext: 'Vendedor Ext.', vendedor_int: 'Vendedor Int.' };
   select.innerHTML = '<option value="">— Eu mesmo —</option>' + vendedoresCache
-    .filter(function (p) { return p.id !== currentUserId && p.ativo !== false && ROLES_VENDEDOR.indexOf(p.role) !== -1; })
-    .map(function (p) { return '<option value="' + p.id + '">' + p.nome_exibicao + '</option>'; })
+    .filter(function (p) { return p.id !== currentUserId && p.ativo !== false && ROTULO[p.role]; })
+    .map(function (p) { return '<option value="' + p.id + '">' + p.nome_exibicao + ' (' + ROTULO[p.role] + ')</option>'; })
     .join('');
 }
 
