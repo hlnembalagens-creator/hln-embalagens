@@ -139,18 +139,25 @@ function renderKpisEGraficos() {
     });
   }
 
-  // Donut — recebido (pago) x pendente de TODOS os pedidos confirmados (não segue o filtro de mês:
-  // o que importa é quanto já entrou e quanto ainda falta cobrar). Abaixo, o que entrou no período.
-  var totalPago = 0, totalPendente = 0, recebidoNoPeriodo = 0;
+  // Donut — recebido (pago) x pendente. Tem seletor próprio de mês (padrão: tudo), independente do
+  // filtro geral da dashboard. Abaixo, totais e o que entrou no mês escolhido pela data do pagamento.
+  garantirSeletorPago();
+  var chavePago = (document.getElementById('pago-periodo') || {}).value || '';
+  function chaveMesDash(iso) { var d = new Date(iso); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+  var totalPago = 0, totalPendente = 0, recebidoNoMes = 0, qtdPago = 0, qtdPendente = 0;
   todosPedidos.forEach(function (p) {
     var v = parseFloat(p.valor_total_a_pagar) || 0;
-    if (p.pago) totalPago += v; else totalPendente += v;
-    if (p.pago && p.data_pagamento && noPeriodo(p.data_pagamento + 'T12:00:00')) recebidoNoPeriodo += v;
+    if (!chavePago || chaveMesDash(p.created_at) === chavePago) {
+      if (p.pago) { totalPago += v; qtdPago++; } else { totalPendente += v; qtdPendente++; }
+    }
+    if (chavePago && p.pago && p.data_pagamento && chaveMesDash(p.data_pagamento + 'T12:00:00') === chavePago) recebidoNoMes += v;
   });
   var resumoPago = document.getElementById('pago-resumo');
   if (resumoPago) {
-    resumoPago.innerHTML = '<strong style="color:#1fa855;">Recebido: ' + formatBRLDash(totalPago) + '</strong> &nbsp;·&nbsp; <strong style="color:#b58900;">A receber: ' + formatBRLDash(totalPendente) + '</strong><br>' +
-      'Recebido em ' + descricaoPeriodo() + ' (pela data do pagamento): ' + formatBRLDash(recebidoNoPeriodo);
+    resumoPago.innerHTML = '<strong style="color:#1fa855;">Recebido: ' + formatBRLDash(totalPago) + '</strong> (' + qtdPago + ' pedido' + (qtdPago === 1 ? '' : 's') + ')' +
+      ' &nbsp;·&nbsp; <strong style="color:#b58900;">A receber: ' + formatBRLDash(totalPendente) + '</strong> (' + qtdPendente + ')<br>' +
+      'Total: ' + formatBRLDash(totalPago + totalPendente) +
+      (chavePago ? '<br>Dinheiro que entrou neste mês (pela data do pagamento): ' + formatBRLDash(recebidoNoMes) : '');
   }
 
   if (graficoPago) graficoPago.destroy();
@@ -454,6 +461,19 @@ async function iniciarSeletorVendedorMapa() {
     .sort(function (a, b) { return String(a.nome_exibicao).localeCompare(String(b.nome_exibicao)); })
     .map(function (u) { return '<option value="' + u.id + '">' + u.nome_exibicao + '</option>'; }).join('');
   sel.addEventListener('change', function () { heatmapVendedor = sel.value; renderClientesRanking(); });
+}
+
+function garantirSeletorPago() {
+  var sel = document.getElementById('pago-periodo');
+  if (!sel || sel.dataset.pronto) return;
+  var chaves = {};
+  todosPedidos.forEach(function (p) { var d = new Date(p.created_at); chaves[d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')] = true; });
+  sel.innerHTML = '<option value="">Todos os meses (geral)</option>' + Object.keys(chaves).sort().reverse().map(function (k) {
+    var partes = k.split('-');
+    return '<option value="' + k + '">' + MESES_NOME[Number(partes[1]) - 1] + ' de ' + partes[0] + '</option>';
+  }).join('');
+  sel.dataset.pronto = '1';
+  sel.addEventListener('change', function () { renderKpisEGraficos(); });
 }
 
 function renderTudo() {
