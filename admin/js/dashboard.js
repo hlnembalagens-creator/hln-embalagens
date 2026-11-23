@@ -59,7 +59,7 @@ function descricaoPeriodo() {
 async function buscarPedidosDashboard() {
   var { data, error } = await supabaseClient
     .from('pedidos')
-    .select('id, numero, cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, nf_emitida, nf_numero, nf_dispensada, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor, nao_contabilizar)')
+    .select('id, numero, cliente_id, vendedor_id, valor_total_a_pagar, created_at, pago, data_pagamento, nf_emitida, nf_numero, nf_dispensada, clientes(razao_social, nome_fantasia, municipio, uf, eh_fornecedor, nao_contabilizar)')
     .eq('tipo', 'pedido')
     .order('created_at', { ascending: false });
 
@@ -139,12 +139,19 @@ function renderKpisEGraficos() {
     });
   }
 
-  // Donut — recebido (pago) x pendente dentro do período
-  var totalPago = 0, totalPendente = 0;
-  pedidos.forEach(function (p) {
+  // Donut — recebido (pago) x pendente de TODOS os pedidos confirmados (não segue o filtro de mês:
+  // o que importa é quanto já entrou e quanto ainda falta cobrar). Abaixo, o que entrou no período.
+  var totalPago = 0, totalPendente = 0, recebidoNoPeriodo = 0;
+  todosPedidos.forEach(function (p) {
     var v = parseFloat(p.valor_total_a_pagar) || 0;
     if (p.pago) totalPago += v; else totalPendente += v;
+    if (p.pago && p.data_pagamento && noPeriodo(p.data_pagamento + 'T12:00:00')) recebidoNoPeriodo += v;
   });
+  var resumoPago = document.getElementById('pago-resumo');
+  if (resumoPago) {
+    resumoPago.innerHTML = '<strong style="color:#1fa855;">Recebido: ' + formatBRLDash(totalPago) + '</strong> &nbsp;·&nbsp; <strong style="color:#b58900;">A receber: ' + formatBRLDash(totalPendente) + '</strong><br>' +
+      'Recebido em ' + descricaoPeriodo() + ' (pela data do pagamento): ' + formatBRLDash(recebidoNoPeriodo);
+  }
 
   if (graficoPago) graficoPago.destroy();
   var ctxPago = document.getElementById('chart-pago-pendente');
