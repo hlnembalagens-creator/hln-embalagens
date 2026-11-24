@@ -48,7 +48,11 @@
       Também dá para enviar o PDF (ou um arquivo OFX) por aqui. Importar o mesmo extrato de novo não duplica nada.
     </p>
 
-    <h3 style="font-size:0.95rem; margin:0 0 8px;">Extratos recebidos</h3>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:8px;">
+      <h3 style="font-size:0.95rem; margin:0;">Extratos recebidos</h3>
+      <button type="button" class="btn btn-outline" id="btn-ler-email">Ler e-mail agora</button>
+    </div>
+    <p id="ler-email-resultado" class="hint" style="margin:0 0 8px;"></p>
     <div class="table-scroll" style="margin-bottom:18px;">
       <table class="admin-table">
         <thead><tr><th>Recebido em</th><th>Período</th><th>Resultado</th><th></th></tr></thead>

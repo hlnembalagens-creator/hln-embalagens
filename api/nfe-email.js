@@ -12,6 +12,7 @@ var ImapFlow = require('imapflow').ImapFlow;
 var simpleParser = require('mailparser').simpleParser;
 var salvarPendente = require('./_lib/salvar-pendente').salvarPendente;
 var extrato = require('./_lib/extrato-server');
+var usuarioAdmin = require('./_lib/admin-auth').usuarioAdmin;
 
 var PASTA_PROCESSADOS = 'Processados';
 var MAX_EMAILS_POR_EXECUCAO = 15;
@@ -23,8 +24,12 @@ function ehPdf(anexo) {
 }
 
 module.exports = async function handler(req, res) {
+  // Autorizado: o cron da Vercel (Bearer CRON_SECRET) ou um Administrador logado clicando em "Ler e-mail agora".
   var segredo = process.env.CRON_SECRET;
-  if (!segredo || req.headers.authorization !== 'Bearer ' + segredo) {
+  var viaCron = !!segredo && req.headers.authorization === 'Bearer ' + segredo;
+  var viaAdmin = false;
+  if (!viaCron && req.method === 'POST') viaAdmin = !!(await usuarioAdmin((req.body || {}).accessToken));
+  if (!viaCron && !viaAdmin) {
     res.status(401).json({ error: 'Não autorizado.' });
     return;
   }

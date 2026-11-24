@@ -369,6 +369,25 @@ async function fecharRevisaoSeConcluida() {
   carregarImportacoes();
 }
 
+async function lerEmailAgora() {
+  var btn = document.getElementById('btn-ler-email');
+  var saida = document.getElementById('ler-email-resultado');
+  btn.disabled = true; btn.textContent = 'Lendo...';
+  saida.textContent = 'Lendo a caixa nfe@... pode levar até 1 minuto.';
+  try {
+    var sess = (await supabaseClient.auth.getSession()).data.session;
+    var resp = await fetch('/api/nfe-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: sess ? sess.access_token : null }) });
+    var dados = await resp.json().catch(function () { return {}; });
+    if (!resp.ok) throw new Error(dados.error || 'Erro ao ler o e-mail.');
+    var r = dados.resumo || {};
+    saida.textContent = r.emails + ' e-mail(s) lido(s), ' + (r.extratos || []).length + ' extrato(s) processado(s), ' + r.gravados + ' NF(s) enviada(s) para o Estoque.' +
+      ((r.erros || []).length ? ' Avisos: ' + r.erros.join(' | ') : '');
+    carregarImportacoes();
+  } catch (err) {
+    saida.textContent = 'Não foi possível ler o e-mail: ' + (err.message || err);
+  } finally { btn.disabled = false; btn.textContent = 'Ler e-mail agora'; }
+}
+
 (function () {
   var input = document.getElementById('extrato-arquivo');
   if (!input) return;
@@ -378,5 +397,7 @@ async function fecharRevisaoSeConcluida() {
     if (/\.pdf$/i.test(f.name)) enviarPdfExtrato(f); else lerArquivoExtrato(f);
   });
   document.getElementById('extrato-aplicar').addEventListener('click', async function () { await aplicarExtrato(); await fecharRevisaoSeConcluida(); });
+  var btnEmail = document.getElementById('btn-ler-email');
+  if (btnEmail) btnEmail.addEventListener('click', lerEmailAgora);
   (window.ADMIN_AUTH_READY || Promise.resolve()).then(carregarImportacoes);
 })();
