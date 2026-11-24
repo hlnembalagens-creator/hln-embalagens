@@ -1,164 +1,5 @@
-// Importação de extrato bancário (OFX) no Financeiro, com revisão antes de gravar.
-//  - Crédito  -> dá baixa numa entrada pendente, confirma que já estava baixada, ou cria uma entrada paga.
-//  - Débito   -> vincula a uma saída já lançada (acertando a data) ou cria uma saída nova.
-// Nada é gravado sem o "Aplicar". O FITID de cada lançamento fica guardado (extrato_movimentos), então
-// reimportar o mesmo extrato (ou um que se sobreponha) nunca duplica.
-
-var TOLERANCIA_VALOR = 0.05;       // centavos de diferença aceitos entre extrato e lançamento
-var TOLERANCIA_PEDIDO_COM_NOME = 2.00; // pedido sem lançamento: aceita pequena diferença (juros/arredondamento) se o nome bate
-var JANELA_JA_LANCADO_DIAS = 7;    // entrada já paga com mesmo valor perto da data do crédito
-var JANELA_VINCULO_SAIDA_DIAS = 20; // saída prevista (vencimento) x pagamento real
-
-var extratoLinhas = [];            // uma por lançamento do arquivo
-var extratoContexto = null;        // dados do banco usados nas sugestões
-
-/* ===================== LEITURA DO OFX ===================== */
-
-function parseOfx(texto) {
-  var movs = [];
-  texto.split(/<STMTTRN>/i).slice(1).forEach(function (bloco) {
-    bloco = bloco.split(/<\/STMTTRN>/i)[0];
-    function tag(nome) {
-      var m = bloco.match(new RegExp('<' + nome + '>([^<\\r\\n]*)', 'i'));
-      return m ? m[1].trim() : '';
-    }
-    var d = tag('DTPOSTED');
-    var valor = parseFloat(tag('TRNAMT').replace(',', '.'));
-    if (!tag('FITID') || d.length < 8 || isNaN(valor)) return;
-    movs.push({
-      fitid: tag('FITID'),
-      data: d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8), // sem conversão de fuso: vale o dia do banco
-      valor: Math.round(valor * 100) / 100,
-      memo: tag('MEMO').replace(/&amp;/gi, '&')
-    });
-  });
-  movs.sort(function (a, b) { return a.data < b.data ? -1 : a.data > b.data ? 1 : 0; });
-
-  var saldo = texto.match(/<LEDGERBAL>[\s\S]*?<BALAMT>([^<\r\n]*)/i);
-  return { movimentos: movs, saldo: saldo ? parseFloat(saldo[1]) : null };
-}
-
-/* ===================== SUGESTÕES ===================== */
-
-var STOPWORDS_NOME = ['LTDA', 'EPP', 'EIRELI', 'EIRELLI', 'DAS', 'DOS', 'COMERCIO', 'COM', 'PRODUTOS', 'DE', 'DA', 'DO', 'EM', 'SERVICOS', 'ALIMENTICIOS', 'ALIMENTOS'];
-
-function tokensNome(texto) {
-  var limpo = String(texto || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z0-9 ]/g, ' ');
-  return limpo.split(/\s+/).filter(function (t) {
-    return t.length >= 3 && !/^\d+$/.test(t) && STOPWORDS_NOME.indexOf(t) === -1;
-  });
-}
-
-// "Pagamento recebido - Ra-chu Restaurante & Churrascaria - 18.713.582/0001-19" -> nome + documento (só dígitos)
-function separarMemo(memo) {
-  var m = String(memo || '').match(/^(.*?)\s+-\s+(.*?)\s*(?:-\s*([\d./-]+))?\s*$/);
-  if (!m) return { tipo: memo, nome: '', doc: '' };
-  return { tipo: m[1], nome: m[2], doc: (m[3] || '').replace(/\D/g, '') };
-}
-
-function pontuacaoNome(tokensA, tokensB) {
-  return tokensA.filter(function (t) { return tokensB.indexOf(t) !== -1; }).length;
-}
-
-function difDias(a, b) { // a - b em dias, com sinal
-  return Math.round((new Date(a + 'T00:00:00Z') - new Date(b + 'T00:00:00Z')) / 86400000);
-}
-
-function diasEntre(a, b) {
-  return Math.abs(Math.round((new Date(a + 'T00:00:00Z') - new Date(b + 'T00:00:00Z')) / 86400000));
-}
-
-function categoriaDaSaida(memo) {
-  var m = String(memo || '').toUpperCase();
-  if (/CAPITAL|ALTISVAC|THERMO|PAGCERTO/.test(m)) return 'Fornecedor';
-  if (/DAS - SIMPLES|MINISTERIO DA FAZENDA|SIMPLES NACIONAL/.test(m)) return 'Imposto';
-  if (/CONTABIL/.test(m)) return 'Contabilidade';
-  if (/TIM S A|VIVO|CLARO/.test(m)) return 'Telefone';
-  if (/RESERVA DE LIMITE|CART[ÃA]O DE CR/.test(m)) return 'Cartão de crédito';
-  if (/GRAFICA/.test(m)) return 'Gráfica';
-  return 'Outros';
-}
-
-// ctx: { entradas, saidas, pedidos, clientesPorDoc, jaImportados:{fitid:mov} }
-function montarSugestoes(movs, ctx) {
-  var usados = {}; // um lançamento do banco consome no máximo um lançamento do sistema
-  var linhas = [];
-
-  movs.forEach(function (mov) {
-    var linha = { mov: mov, jaImportado: ctx.jaImportados[mov.fitid] || null, acao: '', alvoId: '', categoria: '', descricao: '', candidatos: {} };
-    var partes = separarMemo(mov.memo);
-    linha.partes = partes;
-
-    if (linha.jaImportado) { linhas.push(linha); return; }
-
-    var valor = Math.abs(mov.valor);
-    var cliente = ctx.clientesPorDoc[partes.doc] || null;
-    var tokensPagador = tokensNome(partes.nome).concat(cliente ? tokensNome(cliente.razao_social + ' ' + (cliente.nome_fantasia || '')) : []);
-
-    function parecido(lanc, campoNome) { return pontuacaoNome(tokensPagador, tokensNome(lanc[campoNome])); }
-    function porValor(lista) { return lista.filter(function (x) { return Math.abs(parseFloat(x.valor) - valor) <= TOLERANCIA_VALOR; }); }
-    function livres(lista) { return lista.filter(function (x) { return !usados[x.id]; }); }
-
-    if (mov.valor > 0) {
-      var pagas = livres(porValor(ctx.entradas.filter(function (e) { return e.pago; }))).filter(function (e) {
-        return diasEntre(e.data_pagamento || e.data, mov.data) <= JANELA_JA_LANCADO_DIAS;
-      });
-      // Um pagamento não pode ser anterior ao pedido que ele quita (2 dias de folga).
-      function depoisDoPedido(dataPedido) { return !dataPedido || difDias(mov.data, dataPedido) >= -2; }
-      var pendentes = livres(porValor(ctx.entradas.filter(function (e) { return !e.pago; }))).filter(function (e) {
-        return !e.pedido_id || depoisDoPedido(ctx.dataPedido[e.pedido_id]);
-      });
-      var pedidosSemEntrada = livres(ctx.pedidos.filter(function (p) {
-        if (p.temEntrada || !depoisDoPedido(p.data)) return false;
-        var dif = Math.min(Math.abs(p.valor_total_a_pagar - valor), Math.abs(p.valor_total_a_pagar_vista - valor));
-        return dif <= TOLERANCIA_VALOR || (dif <= TOLERANCIA_PEDIDO_COM_NOME && parecido(p, 'cliente_nome') > 0);
-      }));
-
-      function ordenar(lista, campoNome, campoData) {
-        return lista.slice().sort(function (a, b) {
-          return (parecido(b, campoNome) - parecido(a, campoNome)) || (diasEntre(a[campoData] || a.data, mov.data) - diasEntre(b[campoData] || b.data, mov.data));
-        });
-      }
-      linha.candidatos.ja = ordenar(pagas, 'cliente_nome', 'data_pagamento');
-      linha.candidatos.baixa = ordenar(pendentes, 'cliente_nome', 'data');
-      linha.candidatos.pedido = ordenar(pedidosSemEntrada, 'cliente_nome', 'data');
-
-      var jaMelhor = linha.candidatos.ja[0];
-      var baixaMelhor = linha.candidatos.baixa[0];
-      var pedidoMelhor = linha.candidatos.pedido[0];
-      // Nome do cliente pesa mais que a data; só sem nome parecido vale a coincidência de data.
-      var jaNome = jaMelhor && parecido(jaMelhor, 'cliente_nome') > 0;
-      var baixaNome = baixaMelhor && parecido(baixaMelhor, 'cliente_nome') > 0;
-      var jaData = jaMelhor && diasEntre(jaMelhor.data_pagamento || jaMelhor.data, mov.data) <= 3;
-      var baixaData = baixaMelhor && linha.candidatos.baixa.length === 1 && diasEntre(baixaMelhor.data, mov.data) <= 10;
-      if (jaNome) {
-        linha.acao = 'ja_lancado'; linha.alvoId = jaMelhor.id; usados[jaMelhor.id] = true;
-      } else if (baixaNome) {
-        linha.acao = 'baixa'; linha.alvoId = baixaMelhor.id; usados[baixaMelhor.id] = true;
-      } else if (jaData) {
-        linha.acao = 'ja_lancado'; linha.alvoId = jaMelhor.id; usados[jaMelhor.id] = true;
-      } else if (baixaData) {
-        linha.acao = 'baixa'; linha.alvoId = baixaMelhor.id; usados[baixaMelhor.id] = true;
-      } else if (pedidoMelhor && parecido(pedidoMelhor, 'cliente_nome') > 0) {
-        linha.acao = 'criar_entrada'; linha.alvoId = pedidoMelhor.id; usados[pedidoMelhor.id] = true;
-      }
-      linha.descricao = cliente ? cliente.razao_social : partes.nome;
-    } else {
-      var saidas = livres(porValor(ctx.saidas)).filter(function (s) { return diasEntre(s.data, mov.data) <= JANELA_VINCULO_SAIDA_DIAS; });
-      saidas.sort(function (a, b) {
-        return (Math.abs(parseFloat(a.valor) - valor) - Math.abs(parseFloat(b.valor) - valor)) || (diasEntre(a.data, mov.data) - diasEntre(b.data, mov.data));
-      });
-      linha.candidatos.saida = saidas;
-      linha.categoria = categoriaDaSaida(mov.memo);
-      linha.descricao = mov.memo;
-      if (saidas[0]) { linha.acao = 'vincular_saida'; linha.alvoId = saidas[0].id; usados[saidas[0].id] = true; }
-      else { linha.acao = 'criar_saida'; }
-    }
-    linhas.push(linha);
-  });
-
-  return linhas;
-}
+// Tela de importação de extrato (Financeiro): revisão e aplicação. A leitura e as sugestões ficam em
+// extrato-core.js (carregado antes deste arquivo).
 
 /* ===================== TELA ===================== */
 
@@ -423,9 +264,119 @@ async function aplicarExtrato() {
   if (typeof gerarRelatorio === 'function') gerarRelatorio();
 }
 
+/* ===================== PDF (servidor) + EXTRATOS RECEBIDOS ===================== */
+
+var importacaoEmRevisao = null;
+
+function arquivoParaBase64(arquivo) {
+  return new Promise(function (resolve, reject) {
+    var r = new FileReader();
+    r.onload = function () { resolve(String(r.result).split(',')[1] || ''); };
+    r.onerror = function () { reject(new Error('Não consegui ler o arquivo.')); };
+    r.readAsDataURL(arquivo);
+  });
+}
+
+function rotuloAcaoPlano(a) {
+  return { ja_lancado: 'Já lançado', baixa: 'Dar baixa', vincular_saida: 'Vincular saída', criar_saida: 'Criar saída', criar_entrada: 'Criar entrada', revisar: 'Revisar' }[a] || a;
+}
+
+async function enviarPdfExtrato(arquivo) {
+  var erroEl = document.getElementById('extrato-error');
+  var saida = document.getElementById('extrato-pdf-resultado');
+  erroEl.style.display = 'none';
+  saida.innerHTML = 'Processando o PDF...';
+  try {
+    var simular = document.getElementById('extrato-simular').checked;
+    var sess = (await supabaseClient.auth.getSession()).data.session;
+    var resp = await fetch('/api/extrato-pdf', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: sess ? sess.access_token : null, pdfBase64: await arquivoParaBase64(arquivo), nomeArquivo: arquivo.name, dryRun: simular })
+    });
+    var dados = await resp.json().catch(function () { return {}; });
+    if (!resp.ok) throw new Error(dados.error || 'Erro ao processar o PDF.');
+    var r = dados.resumo;
+    saida.innerHTML = '<div style="padding:12px 14px; background:' + (dados.dryRun ? '#fff7e0' : '#e8f7ee') + '; border-radius:10px;">' +
+      '<strong>' + (dados.dryRun ? 'Simulação (nada foi gravado)' : 'Extrato processado') + '</strong><br>' +
+      r.lancamentos_no_pdf + ' lançamentos no PDF • ' + r.ja_importados + ' já importados • ' + r.anteriores_ignorados + ' anteriores ignorados • <strong>' + r.novos + ' novos</strong><br>' +
+      '<strong>' + r.aplicados_automaticamente + '</strong> ' + (dados.dryRun ? 'seriam aplicados automaticamente' : 'aplicados automaticamente') + ' • <strong>' + r.para_revisar + '</strong> para revisar' +
+      (r.falhas && r.falhas.length ? '<br><span style="color:#a92323;">Falhas: ' + r.falhas.map(escHtml).join('; ') + '</span>' : '') +
+      '<div class="table-scroll" style="margin-top:10px;"><table class="admin-table"><thead><tr><th>Data</th><th>Lançamento</th><th>Valor</th><th>Ação</th><th>Vai para</th></tr></thead><tbody>' +
+      dados.plano.map(function (p) {
+        return '<tr' + (p.automatico ? '' : ' style="background:#fff7e0;"') + '><td>' + formatDataFin(p.data) + '</td><td>' + escHtml(p.memo) + '</td><td>' + fmtBRLExtrato(p.valor) + '</td>' +
+          '<td>' + rotuloAcaoPlano(p.acao) + (p.automatico ? ' <span class="badge badge-ok">automático</span>' : ' <span class="badge badge-warning">revisar</span>') + '</td><td>' + escHtml(p.alvo || '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' +
+      (dados.dryRun ? '<div class="hint" style="margin-top:8px;">Para valer, desmarque "Só simular" e envie o PDF de novo.</div>' : '') + '</div>';
+    if (!dados.dryRun) { carregarImportacoes(); if (typeof loadEntradasRecentes === 'function') loadEntradasRecentes(); if (typeof loadSaidasRecentes === 'function') loadSaidasRecentes(); }
+  } catch (err) {
+    saida.innerHTML = '';
+    erroEl.textContent = 'Não foi possível processar o extrato: ' + (err.message || err);
+    erroEl.style.display = 'block';
+  }
+}
+
+function resumoImportacao(i) {
+  if (i.status === 'erro') return '<span class="badge badge-warning">Erro</span> ' + escHtml(i.erro || '');
+  var r = i.resumo || {};
+  return '<strong>' + (r.aplicados_automaticamente || 0) + '</strong> automáticos • <strong>' + (r.para_revisar || 0) + '</strong> para revisar' + (i.status === 'revisado' ? ' <span class="badge badge-ok">Revisado</span>' : '');
+}
+
+async function carregarImportacoes() {
+  var tbody = document.getElementById('importacoes-tbody');
+  if (!tbody) return;
+  var { data, error } = await supabaseClient.from('extrato_importacoes').select('*').order('created_at', { ascending: false }).limit(10);
+  if (error) { tbody.innerHTML = '<tr><td colspan="4">Erro: ' + escHtml(error.message) + '</td></tr>'; return; }
+  if (!data || !data.length) { tbody.innerHTML = '<tr><td colspan="4">Nenhum extrato recebido ainda. Quando a Cora enviar o PDF para o nfe@, ele aparece aqui.</td></tr>'; return; }
+  tbody.innerHTML = data.map(function (i) {
+    var quando = new Date(i.created_at).toLocaleString('pt-BR');
+    var periodo = i.periodo_de ? formatDataFin(i.periodo_de) + ' a ' + formatDataFin(i.periodo_ate) : '—';
+    var botao = (i.status === 'revisar' && (i.movimentos_revisar || []).length) ? '<button type="button" data-revisar="' + i.id + '">Revisar (' + i.movimentos_revisar.length + ')</button>' : '';
+    return '<tr><td data-label="Recebido em">' + quando + '</td><td data-label="Período">' + periodo + '</td><td data-label="Resultado">' + resumoImportacao(i) + '</td><td class="row-actions">' + botao + '</td></tr>';
+  }).join('');
+  tbody.querySelectorAll('[data-revisar]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var imp = data.find(function (x) { return x.id === b.dataset.revisar; });
+      if (imp) abrirRevisaoImportacao(imp);
+    });
+  });
+}
+
+async function abrirRevisaoImportacao(imp) {
+  var erroEl = document.getElementById('extrato-error');
+  erroEl.style.display = 'none';
+  try {
+    var movs = imp.movimentos_revisar || [];
+    var ctx = await carregarContextoExtrato(movs);
+    ctx.saldo = imp.saldo;
+    extratoContexto = ctx;
+    importacaoEmRevisao = imp;
+    extratoLinhas = montarSugestoes(movs, ctx);
+    document.getElementById('extrato-tabela').style.display = '';
+    renderExtrato();
+    document.getElementById('extrato-tabela').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) {
+    erroEl.textContent = 'Não foi possível abrir a revisão: ' + (err.message || err);
+    erroEl.style.display = 'block';
+  }
+}
+
+async function fecharRevisaoSeConcluida() {
+  if (!importacaoEmRevisao) return;
+  var restantes = extratoLinhas.filter(function (l) { return !l.jaImportado; });
+  if (restantes.length) return;
+  await supabaseClient.from('extrato_importacoes').update({ status: 'revisado', revisado_em: new Date().toISOString() }).eq('id', importacaoEmRevisao.id);
+  importacaoEmRevisao = null;
+  carregarImportacoes();
+}
+
 (function () {
   var input = document.getElementById('extrato-arquivo');
   if (!input) return;
-  input.addEventListener('change', function () { if (input.files[0]) lerArquivoExtrato(input.files[0]); });
-  document.getElementById('extrato-aplicar').addEventListener('click', aplicarExtrato);
+  input.addEventListener('change', function () {
+    var f = input.files[0];
+    if (!f) return;
+    if (/\.pdf$/i.test(f.name)) enviarPdfExtrato(f); else lerArquivoExtrato(f);
+  });
+  document.getElementById('extrato-aplicar').addEventListener('click', async function () { await aplicarExtrato(); await fecharRevisaoSeConcluida(); });
+  (window.ADMIN_AUTH_READY || Promise.resolve()).then(carregarImportacoes);
 })();

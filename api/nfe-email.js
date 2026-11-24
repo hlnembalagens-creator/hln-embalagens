@@ -2,6 +2,8 @@
 // de NF/romaneio dos e-mails novos e grava em estoque_importacoes_pendentes (mesma fila
 // do import da pasta local). O admin confirma na tela de Estoque. E-mails processados
 // vão para a pasta "Processados" da própria caixa, então nada é lido duas vezes.
+// Extrato bancário da Cora em PDF (enviado pelo banco para este e-mail) NÃO é NF: vai para a conciliação
+// automática do Financeiro (_lib/extrato-server.js).
 //
 // Variáveis de ambiente (Vercel): NFE_IMAP_HOST, NFE_IMAP_USER, NFE_IMAP_PASS,
 // NFE_IMAP_PORT (opcional, 993), CRON_SECRET, além das que a leitura por IA já usa.
@@ -9,6 +11,7 @@
 var ImapFlow = require('imapflow').ImapFlow;
 var simpleParser = require('mailparser').simpleParser;
 var salvarPendente = require('./_lib/salvar-pendente').salvarPendente;
+var extrato = require('./_lib/extrato-server');
 
 var PASTA_PROCESSADOS = 'Processados';
 var MAX_EMAILS_POR_EXECUCAO = 15;
@@ -39,7 +42,7 @@ module.exports = async function handler(req, res) {
     logger: false
   });
 
-  var resumo = { emails: 0, pdfs: 0, gravados: 0, erros: [] };
+  var resumo = { emails: 0, pdfs: 0, gravados: 0, extratos: [], erros: [] };
 
   try {
     await client.connect();
@@ -65,6 +68,23 @@ module.exports = async function handler(req, res) {
             continue;
           }
           resumo.pdfs++;
+
+          var textoPdf = '';
+          try { textoPdf = await extrato.textoDoPdf(anexo.content); } catch (e) { textoPdf = ''; }
+          if (textoPdf && extrato.ehExtratoCora(textoPdf)) {
+            try {
+              var rx = await extrato.processarExtratoPdf(textoPdf, anexo.filename || ('extrato-' + uid + '.pdf'));
+              if (rx.ok) resumo.extratos.push(rx.resumo);
+              else resumo.erros.push((anexo.filename || 'extrato') + ': ' + rx.error);
+              // Falha de leitura/conferência fica registrada para o admin ver (gravou = true); só repete se nada foi gravado.
+              if (!rx.gravou) tudoCerto = false;
+            } catch (e) {
+              tudoCerto = false;
+              resumo.erros.push((anexo.filename || 'extrato') + ': ' + (e && e.message ? e.message : e));
+            }
+            continue;
+          }
+
           var r = await salvarPendente(anexo.filename || ('nfe-' + uid + '.pdf'), anexo.content.toString('base64'));
           if (r.gravou) resumo.gravados++;
           // Erro de leitura da IA já fica registrado (status "erro") e aparece para o admin;

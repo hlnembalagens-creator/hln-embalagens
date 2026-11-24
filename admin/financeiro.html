@@ -41,16 +41,29 @@
   <h1 class="admin-title">Financeiro</h1>
 
   <div class="admin-card" id="card-extrato">
-    <h2>Importar extrato bancário (OFX)</h2>
+    <h2>Extrato bancário (conciliação automática)</h2>
     <p style="color:var(--gray-400); margin-top:-10px; margin-bottom:16px; font-size:0.85rem;">
-      Baixe o extrato em formato <strong>OFX</strong> no app do banco e escolha o arquivo. O sistema sugere o que fazer com cada lançamento
-      (dar baixa em recebimentos, vincular pagamentos a saídas já lançadas ou criar o que falta) e <strong>só grava depois que você clicar em Aplicar</strong>.
-      Importar o mesmo extrato de novo não duplica nada.
+      O <strong>extrato em PDF da Cora</strong> enviado para o e-mail <strong>nfe@</strong> é lido sozinho uma vez por dia: o que casa com segurança
+      (valor exato + cliente/CNPJ, ou saída de fornecedor conhecido) já recebe baixa; o resto aparece abaixo em <em>Extratos recebidos</em> para você decidir.
+      Também dá para enviar o PDF (ou um arquivo OFX) por aqui. Importar o mesmo extrato de novo não duplica nada.
     </p>
-    <div class="form-field" style="max-width:420px;">
-      <label for="extrato-arquivo">Arquivo do extrato (.ofx)</label>
-      <input type="file" id="extrato-arquivo" accept=".ofx,.OFX">
+
+    <h3 style="font-size:0.95rem; margin:0 0 8px;">Extratos recebidos</h3>
+    <div class="table-scroll" style="margin-bottom:18px;">
+      <table class="admin-table">
+        <thead><tr><th>Recebido em</th><th>Período</th><th>Resultado</th><th></th></tr></thead>
+        <tbody id="importacoes-tbody"><tr><td colspan="4">Carregando...</td></tr></tbody>
+      </table>
     </div>
+
+    <div class="form-field" style="max-width:420px;">
+      <label for="extrato-arquivo">Enviar extrato manualmente (.pdf da Cora ou .ofx)</label>
+      <input type="file" id="extrato-arquivo" accept=".ofx,.OFX,.pdf,.PDF">
+    </div>
+    <label style="display:flex; gap:8px; align-items:center; margin-top:10px; font-size:0.88rem;">
+      <input type="checkbox" id="extrato-simular" checked style="min-height:auto; width:auto;"> Só simular o PDF (mostra o que seria feito, sem gravar nada)
+    </label>
+    <div id="extrato-pdf-resultado" style="margin-top:12px;"></div>
     <p id="extrato-error" class="error-message" style="display:none;"></p>
     <div id="extrato-resumo" style="margin:16px 0 8px;"></div>
     <div class="table-scroll">
@@ -225,6 +238,7 @@
 <script src="js/auth-guard.js"></script>
 <script src="js/toast.js"></script>
 <script src="js/financeiro.js"></script>
+<script src="js/extrato-core.js"></script>
 <script src="js/extrato.js"></script>
 <script src="js/mobile.js"></script>
 </body>

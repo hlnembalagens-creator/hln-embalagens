@@ -1,3 +1,4 @@
 .vercel
 .claude/settings.local.json
 scripts/importar-nfe.config.json
+node_modules

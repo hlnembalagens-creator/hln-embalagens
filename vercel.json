@@ -54,6 +54,9 @@
   "functions": {
     "api/nfe-email.js": {
       "maxDuration": 60
+    },
+    "api/extrato-pdf.js": {
+      "maxDuration": 30
     }
   }
 }
